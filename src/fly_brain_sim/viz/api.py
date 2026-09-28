@@ -205,19 +205,6 @@ def create_app(
             results.append(stringify_ids(r))
         return {"total": total, "results": results}
 
-    @app.get("/api/neurons/indices")
-    def indices(request: Request, field: str, value: str):
-        """Overview indices of all neurons whose `field` equals `value`."""
-        if field not in COLOR_FIELDS:
-            raise HTTPException(400, f"field must be one of {COLOR_FIELDS}")
-        s = st(request)
-        ids = (
-            s.db.cursor()
-            .execute(f'select root_id from neurons where "{field}" = ? order by root_id', [value])
-            .fetchnumpy()["root_id"]
-        )
-        return {"indices": s.indices_of(ids).tolist()}
-
     @app.get("/api/neurons/{root_id}")
     def neuron(root_id: int, request: Request):
         s = st(request)

@@ -57,14 +57,6 @@ def test_search_finds_cell_types_ids_and_labels(client):
     assert mn9["total"] >= 1 and "MN9" in mn9["results"][0]["matched_label"]
 
 
-def test_indices_by_field(client, db):
-    got = client.get("/api/neurons/indices", params={"field": "cell_type", "value": "KCg-m"})
-    n = scalar(db, "select count(*) from neurons where cell_type = 'KCg-m'")
-    assert len(got.json()["indices"]) == n
-    bad = client.get("/api/neurons/indices", params={"field": "root_id", "value": "1"})
-    assert bad.status_code == 400
-
-
 def test_neuron_info(client, db):
     info = client.get(f"/api/neurons/{T5C}").json()
     assert info["root_id"] == str(T5C) and info["index"] == 0
