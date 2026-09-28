@@ -22,7 +22,10 @@ class ExternalFile:
 SHIU_REPO = "philshiu/Drosophila_brain_model"
 SHIU_COMMIT = "91bdd1e7dcf193f3e7ca5a8933497fcef63b7960"
 ANNOTATIONS_REPO = "flyconnectome/flywire_annotations"
-ANNOTATIONS_COMMIT = "8587524c1748ce5ef2080822a2fc890fc03bf597"
+# Last revision of the annotation file before the v3.0 update (Oct 2025). It has
+# exactly the 139,255 root IDs of the 783 release; later revisions replace a few
+# IDs with ones that are not in 783.
+ANNOTATIONS_COMMIT = "c294fba426f5abe861289bdc1171188026646b04"
 
 SHIU_CONNECTIVITY = ExternalFile(SHIU_REPO, SHIU_COMMIT, "Connectivity_783.parquet", 100_804_642)
 SHIU_COMPLETENESS = ExternalFile(SHIU_REPO, SHIU_COMMIT, "Completeness_783.csv", 3_327_347)
@@ -30,7 +33,7 @@ NEURON_ANNOTATIONS = ExternalFile(
     ANNOTATIONS_REPO,
     ANNOTATIONS_COMMIT,
     "supplemental_files/Supplemental_file1_neuron_annotations.tsv",
-    31_718_505,
+    27_015_208,
 )
 
 EXTERNAL_FILES = (SHIU_CONNECTIVITY, SHIU_COMPLETENESS, NEURON_ANNOTATIONS)
