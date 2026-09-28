@@ -6,6 +6,8 @@ data/raw/codex/ under the canonical name below.
 """
 
 import gzip
+import re
+import zipfile
 from pathlib import Path
 
 import duckdb
@@ -37,6 +39,13 @@ CONNECTION_THRESHOLD = 5
 
 SYNAPSE_TABLE = "fafb_v783_princeton_synapse_table.csv.gz"
 
+# Skeletons ("LOD1 Healed" on Codex): a zip of <root_id>.swc files, in nm.
+SKELETONS = "sk_lod1_783_healed.zip"
+SWC_NAME = re.compile(r"\d{18}\.swc")
+
+# Files this big are symlinked into data/raw/codex/ instead of copied.
+LINK_ABOVE_BYTES = 1_000_000_000
+
 
 def read_header(path: Path) -> str:
     with gzip.open(path, "rt") as f:
@@ -55,8 +64,16 @@ def min_pair_synapses(path: Path) -> int:
     return duckdb.sql(sql).fetchone()[0]
 
 
+def is_skeleton_zip(path: Path) -> bool:
+    with zipfile.ZipFile(path) as z:
+        names = z.namelist()
+    return bool(names) and all(SWC_NAME.fullmatch(n) for n in names)
+
+
 def classify(path: Path) -> str | None:
     """Return the canonical filename for a Codex download, or None if unknown."""
+    if path.suffix == ".zip":
+        return SKELETONS if is_skeleton_zip(path) else None
     header = read_header(path)
     if header == CONNECTIONS_HEADER:
         if min_pair_synapses(path) >= CONNECTION_THRESHOLD:
