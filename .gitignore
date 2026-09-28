@@ -1,0 +1,27 @@
+# Data: never tracked
+/data/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Editors / OS
+.DS_Store
+.vscode/
+.idea/
+
+# AI tool files
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+AGENTS.md
+.cursor/
+.cursorrules
+.aider*
+.github/copilot-instructions.md
