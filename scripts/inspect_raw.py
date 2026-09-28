@@ -8,7 +8,13 @@ import time
 
 import duckdb
 
-from fly_brain_sim.data.inspect import id_columns_read_as_float, profile_file, render_markdown
+from fly_brain_sim.data.codex import is_skeleton_zip
+from fly_brain_sim.data.inspect import (
+    id_columns_read_as_float,
+    profile_file,
+    profile_skeleton_zip,
+    render_markdown,
+)
 from fly_brain_sim.data.paths import DOCS_DIR, RAW_DIR
 
 CODEX = "Downloaded by hand from FlyWire Codex (https://codex.flywire.ai/api/download), v783."
@@ -30,6 +36,8 @@ NOTES = {
     "codex/fafb_v783_princeton_synapse_table.csv.gz": f"{CODEX} Individual synapses. "
     "Symlink to the original download. Root IDs are stored without their common "
     "`720575940` prefix (see column names).",
+    "codex/sk_lod1_783_healed.zip": f'{CODEX} Neuron skeletons ("LOD1 healed"), one SWC '
+    "file per neuron, positions and radii in nm. Symlink to the original download.",
     "codex/labels.csv.gz": f"{CODEX} Community labels (one row per label, with author).",
     "codex/names.csv.gz": f"{CODEX} Unique neuron names.",
     "codex/neurons.csv.gz": f"{CODEX} One row per proofread neuron with neurotransmitter "
@@ -65,14 +73,25 @@ def main() -> None:
             print(f"  WARNING: ID columns read as float: {bad}")
         profiles.append(p)
 
-    unknown = [p.path.relative_to(RAW_DIR).as_posix() for p in profiles]
+    skeletons = []
+    for path in sorted(RAW_DIR.rglob("*.zip")):
+        if not is_skeleton_zip(path):
+            print(f"skip    {path.relative_to(RAW_DIR)} (not a skeleton zip)")
+            continue
+        t0 = time.perf_counter()
+        print(f"inspect {path.relative_to(RAW_DIR)} ...", end=" ", flush=True)
+        z = profile_skeleton_zip(path)
+        print(f"{z.n_files:,} files ({time.perf_counter() - t0:.0f}s)")
+        skeletons.append(z)
+
+    unknown = [p.path.relative_to(RAW_DIR).as_posix() for p in [*profiles, *skeletons]]
     unknown = [u for u in unknown if u not in NOTES]
     if unknown:
         print(f"note: no description for {unknown}")
 
     DOCS_DIR.mkdir(exist_ok=True)
     out = DOCS_DIR / "data_dictionary.md"
-    out.write_text(render_markdown(profiles, RAW_DIR, NOTES))
+    out.write_text(render_markdown(profiles, RAW_DIR, NOTES, skeletons))
     print(f"wrote {out}")
 
 
