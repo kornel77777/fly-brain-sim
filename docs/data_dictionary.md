@@ -25,6 +25,7 @@ Types are those inferred by DuckDB from the full file. *Missing* is the share of
 | [`external/Completeness_783.csv`](#externalcompleteness_783csv) | 3.3 MB | 138,639 | 2 |
 | [`external/Connectivity_783.parquet`](#externalconnectivity_783parquet) | 100.8 MB | 15,091,983 | 8 |
 | [`external/Supplemental_file1_neuron_annotations.tsv`](#externalsupplemental_file1_neuron_annotationstsv) | 27.0 MB | 139,255 | 27 |
+| [`codex/sk_lod1_783_healed.zip`](#codexsk_lod1_783_healedzip) | 13,873.6 MB | 139,273 files | SWC |
 
 ## `codex/cell_stats.csv.gz`
 
@@ -299,3 +300,29 @@ From flyconnectome/flywire_annotations (Schlegel et al. 2024), Supplemental file
 | `vfb_id` | VARCHAR | 0.00% | 139,254 | fw000001 | fw139304 | e.g. `fw000001`, `fw000002`, `fw000003` |
 | `fbbt_id` | VARCHAR | 79.25% | 2,527 | FBbt:00049836 | FBbt_20003859 | `FBbt_00003720` (2,932), `FBbt_00111061` (2,190), `FBbt_00100248` (1,643), `FBbt_00003725` (1,606), `FBbt_00003719` (1,577) |
 | `status` | VARCHAR | 99.53% | 2 | outlier_bio | outlier_seg | `outlier_seg` (344), `outlier_bio` (312) |
+
+## `codex/sk_lod1_783_healed.zip`
+
+Downloaded by hand from FlyWire Codex (https://codex.flywire.ai/api/download), v783. Neuron skeletons ("LOD1 healed"), one SWC file per neuron, positions and radii in nm. Symlink to the original download.
+
+13,873.6 MB zip, 139,273 files, 33.5 GB uncompressed. Every entry is named `<root_id>.swc` (18-digit root ID).
+
+Header of the first file:
+
+```
+# SWC format file
+# based on specifications at http://www.neuronland.org/NLMorphologyConverter/MorphologyFormats/SWC/Spec.html
+# Created on 2023-11-11 using navis (https://github.com/navis-org/navis)
+# Meta: {"id": "720575940590515268", "name": "None", "units": "1 nanometer"}
+# PointNo Label X Y Z Radius Parent
+# Labels:
+# 0 = undefined, 1 = soma, 5 = fork point, 6 = end point
+```
+
+From a random sample of 2,000 files:
+
+- nodes per neuron: min 299, median 3,120, max 106,357
+- roots per file: 1 root(s) in 2,000 files
+- nodes by SWC label: 0: 9,770,923, 1: 1,934, 5: 555,225, 6: 598,466
+- files with a soma node (label 1): 1,934
+- radius: 0 to 6,469 nm
