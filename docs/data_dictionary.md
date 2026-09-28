@@ -24,7 +24,7 @@ Types are those inferred by DuckDB from the full file. *Missing* is the share of
 | [`codex/visual_neuron_types.csv.gz`](#codexvisual_neuron_typescsvgz) | 0.6 MB | 95,079 | 6 |
 | [`external/Completeness_783.csv`](#externalcompleteness_783csv) | 3.3 MB | 138,639 | 2 |
 | [`external/Connectivity_783.parquet`](#externalconnectivity_783parquet) | 100.8 MB | 15,091,983 | 8 |
-| [`external/Supplemental_file1_neuron_annotations.tsv`](#externalsupplemental_file1_neuron_annotationstsv) | 31.7 MB | 139,248 | 31 |
+| [`external/Supplemental_file1_neuron_annotations.tsv`](#externalsupplemental_file1_neuron_annotationstsv) | 27.0 MB | 139,255 | 27 |
 
 ## `codex/cell_stats.csv.gz`
 
@@ -267,38 +267,35 @@ From philshiu/Drosophila_brain_model (Shiu et al. 2024), used by the LIF brain m
 
 From flyconnectome/flywire_annotations (Schlegel et al. 2024), Supplemental file 1. Neuron annotations (cell types, hemilineages, predicted and known neurotransmitters, ...).
 
-31.7 MB, 139,248 rows, 31 columns.
+27.0 MB, 139,255 rows, 27 columns.
+**Warning:** ID columns inferred as floating point: nucleus_id.
 
 | column | type | missing | distinct | min | max | representative values |
 |---|---|---:|---:|---|---|---|
-| `supervoxel_id` | BIGINT | 0.00% | 139,248 | 72132911121484157 | 86135672670827351 | e.g. `72132911121484157`, `72132911121489057`, `72132911121491750` |
-| `root_id` | BIGINT | 0.00% | 139,248 | 720575940596125868 | 720575940661339777 | e.g. `720575940596125868`, `720575940597856265`, `720575940597944841` |
-| `pos_x` | DOUBLE | 0.00% | 83,374 | 21906.0 | 225720.0 | `80504.0` (17), `179576.0` (15), `180192.0` (15), `180688.0` (15), `182400.0` (15) |
-| `pos_y` | DOUBLE | 0.00% | 55,145 | 12840.0 | 110722.0 | `78816.0` (22), `71232.0` (20), `72344.0` (20), `77144.0` (20), `78960.0` (20) |
-| `pos_z` | DOUBLE | 0.00% | 6,779 | 16.0 | 6968.0 | `5798.0` (2,271), `3594.0` (240), `4487.0` (229), `4250.0` (213), `4559.0` (210) |
-| `soma_x` | BIGINT | 15.18% | 31,790 | 21315 | 225592 | `183872` (25), `73248` (22), `184376` (21), `68976` (21), `184864` (20) |
-| `soma_y` | BIGINT | 15.18% | 18,916 | 19219 | 111408 | `74208` (34), `74528` (34), `79544` (33), `72224` (29), `73800` (29) |
-| `soma_z` | BIGINT | 15.18% | 6,601 | 16 | 6975 | `6077` (55), `5752` (53), `3199` (51), `5148` (50), `5274` (48) |
-| `nucleus_id` | BIGINT | 23.10% | 106,977 | 6162 | 9173726 | `1078657` (2), `1102732` (2), `1120850` (2), `1134137` (2), `1139032` (2) |
-| `flow` | VARCHAR | 0.00% | 3 | afferent | intrinsic | `intrinsic` (118,497), `afferent` (19,262), `efferent` (1,489) |
-| `super_class` | VARCHAR | 0.00% | 10 | ascending | visual_projection | `optic` (77,541), `central` (32,383), `sensory` (16,907), `visual_projection` (8,038), `ascending` (1,750) |
-| `cell_class` | VARCHAR | 22.79% | 49 | ALIN | visual | `ME>LO` (22,311), `ME` (18,843), `visual` (11,391), `LA>ME` (8,035), `ME>LOP` (6,242) |
-| `cell_sub_class` | VARCHAR | 81.45% | 100 | AN_AMMC_SAD | wind_gravity | `L1-5` (8,035), `columnar` (4,352), `KCg` (2,490), `tangential` (1,796), `KCab` (1,643) |
-| `supertype` | BIGINT | 75.69% | 1,898 | 10006 | 720575940650282742 | `14292` (2,189), `11862` (1,771), `17488` (917), `11512` (580), `12783` (577) |
-| `cell_type` | VARCHAR | 1.10% | 8,840 | 5-HT-IR  Tan | yDm8 | `R1-6` (8,452), `KCg-m` (2,189), `T2a` (1,772), `Tm3` (1,756), `T4c` (1,706) |
-| `hemibrain_type` | VARCHAR | 76.11% | 4,217 | 5-HTPLP01 | vpoEN | `KCg-m` (2,189), `MC61,MC64` (896), `LC10` (816), `KCab-s` (621), `KCab-m` (619) |
-| `ito_lee_hemilineage` | VARCHAR | 73.04% | 214 | ALad1 | putative_primary | `putative_primary` (3,879), `MBp4` (1,335), `MBp1` (1,300), `MBp3` (1,284), `MBp2` (1,259) |
-| `hartenstein_hemilineage` | VARCHAR | 75.01% | 194 | BAla1 | putative_primary | `putative_primary` (3,412), `MBp4` (1,335), `MBp1` (1,300), `MBp3` (1,284), `MBp2` (1,259) |
-| `top_nt` | VARCHAR | 0.43% | 6 | acetylcholine | serotonin | `acetylcholine` (86,193), `glutamate` (24,875), `gaba` (19,171), `dopamine` (5,909), `serotonin` (2,282) |
-| `top_nt_conf` | DOUBLE | 0.43% | 138,645 | 0.20959174566456235 | 1.0 | `0.44986207008524376` (2), `0.20959174566456235` (1), `0.21047662135373923` (1), `0.21075936925712901` (1), `0.21320276195919377` (1) |
-| `known_nt` | VARCHAR | 36.92% | 156 | CCAP | tyramine, serotonin, glutamate, Dh44, proctolin, acetylch... | `acetylcholine` (33,222), `histamine` (9,795), `glutamate` (9,261), `acetylcholine; acetylcholine` (7,335), `gaba-negative` (4,913) |
-| `known_nt_source` | VARCHAR | 36.92% | 155 | ASB (educated guess); Ito et al., 2013 (immuno, lineage b... | Zhao et al., 2023 (FISH) | `Davis et al., 2020 (TAPIN)` (41,315), `Nern et al., 2024 (EASI-FISH)` (6,401), `Takemura et al. 2011 (RT-PCR)` (6,240), `Mauss et al. 2014 (immuno); Shinomiya et al. 2014 (RT-PCR)` (5,998), `Ito et al., 2013 (immuno, lineage based)` (4,491) |
-| `side` | VARCHAR | 0.00% | 4 | center | right | `left` (69,956), `right` (69,088), `center` (174), `na` (30) |
-| `nerve` | VARCHAR | 93.07% | 8 | AN | aPhN | `CV` (3,687), `AN` (3,458), `MxLbN` (1,890), `OCN` (273), `PhN` (131) |
-| `vfb_id` | VARCHAR | 0.00% | 139,244 | fw000001 | fw139304 | `fw042443` (2), `fw000001` (1), `fw000002` (1), `fw000003` (1), `fw000004` (1) |
-| `fbbt_id` | VARCHAR | 79.24% | 2,527 | FBbt:00049836 | FBbt_20003859 | `FBbt_00003720` (2,933), `FBbt_00111061` (2,190), `FBbt_00100248` (1,643), `FBbt_00003725` (1,605), `FBbt_00003719` (1,577) |
-| `status` | VARCHAR | 99.53% | 2 | outlier_bio | outlier_seg | `outlier_seg` (344), `outlier_bio` (314) |
-| `dimorphism` | VARCHAR | 0.00% | 5 | female-specific | sexually dimorphic | `isomorphic` (138,072), `sexually dimorphic` (652), `female-specific` (270), `potentially sexually dimorphic` (161), `potentially female-specific` (93) |
-| `matching_notes` | VARCHAR | 99.73% | 23 | ['DNge005 was merged into DNge172'] | the male dendrites have an extra layer of arborisation in... | `the male dendrites have an extra layer of arborisation in...` (281), `['so not considered a dimorphism.', 'but only seen in a f...` (15), `['most fw neurons do not', 'so they are not currently con...` (14), `['extra dendrite in male']` (8), `['so not considered a dimorphism.', 'unlike fw neurons; h...` (7) |
-| `fru_dsx` | VARCHAR | 97.62% | 3 | coexpress | fru | `fru` (3,174), `coexpress` (80), `dsx` (54) |
-| `synonyms` | VARCHAR | 98.28% | 126 | Cachero 2010: aDT-a;Yu 2010: aDT3 | fru-F-800063 | `Cachero 2010: pSP-b;Yu 2010: pSP2/3` (118), `Cachero 2010: aIP-b` (114), `Cachero 2010: aDT-h;Yu 2010: aDT6` (95), `Cachero 2010: aSP-a;Yu 2010: aSP2` (95), `Cachero 2010: aSP-d;Yu 2010: aSP13` (95) |
+| `supervoxel_id` | BIGINT | 0.00% | 139,255 | 72132911121484157 | 86135672670827351 | e.g. `72132911121484157`, `72132911121489057`, `72132911121491750` |
+| `root_id` | BIGINT | 0.00% | 139,255 | 720575940596125868 | 720575940661339777 | e.g. `720575940596125868`, `720575940597856265`, `720575940597944841` |
+| `pos_x` | BIGINT | 0.00% | 83,349 | 21906 | 225720 | `80504` (17), `179576` (15), `180192` (15), `180688` (15), `182400` (15) |
+| `pos_y` | BIGINT | 0.00% | 55,124 | 12840 | 110722 | `78816` (22), `71232` (20), `72344` (20), `77144` (20), `78960` (20) |
+| `pos_z` | BIGINT | 0.00% | 6,774 | 16 | 6968 | `5798` (2,271), `3594` (240), `4487` (229), `4250` (213), `4559` (210) |
+| `soma_x` | DOUBLE | 15.19% | 31,785 | 21315.0 | 225592.0 | `183872.0` (25), `73248.0` (22), `184376.0` (21), `68976.0` (21), `184864.0` (20) |
+| `soma_y` | DOUBLE | 15.19% | 18,910 | 19219.0 | 111408.0 | `74208.0` (34), `74528.0` (34), `79544.0` (33), `72224.0` (29), `73800.0` (29) |
+| `soma_z` | DOUBLE | 15.19% | 6,601 | 16.0 | 6975.0 | `6077.0` (55), `5752.0` (53), `3199.0` (51), `5148.0` (50), `5274.0` (48) |
+| `nucleus_id` | DOUBLE | 23.10% | 106,978 | 6162.0 | 9173726.0 | `1078657.0` (2), `1099204.0` (2), `1102732.0` (2), `1120850.0` (2), `1134137.0` (2) |
+| `flow` | VARCHAR | 0.00% | 3 | afferent | intrinsic | `intrinsic` (118,501), `afferent` (19,265), `efferent` (1,489) |
+| `super_class` | VARCHAR | 0.00% | 9 | ascending | visual_projection | `optic` (77,536), `central` (32,388), `sensory` (16,903), `visual_projection` (8,053), `ascending` (2,362) |
+| `cell_class` | VARCHAR | 22.87% | 47 | ALIN | visual | `ME>LO` (22,517), `ME` (18,842), `visual` (11,391), `LA>ME` (8,035), `ME>LOP` (6,242) |
+| `cell_sub_class` | VARCHAR | 85.51% | 69 | AN_AMMC_SAD | water_PN | `L1-5` (8,035), `columnar` (4,352), `tangential` (1,798), `eye bristle` (1,111), `AN_GNG` (658) |
+| `cell_type` | VARCHAR | 20.23% | 5,634 | (AVLP346,AVLP348)a | vDelta | `R1-6` (8,452), `Dm3` (2,545), `T2a` (1,781), `Tm3` (1,746), `T4c` (1,692) |
+| `hemibrain_type` | VARCHAR | 78.63% | 3,553 | 1041666949 | vpoEN | `KCg-m` (2,190), `MC61,MC64` (896), `LC10` (815), `KCab-s` (621), `KCab-m` (619) |
+| `ito_lee_hemilineage` | VARCHAR | 73.50% | 199 | ALad1 | putative_primary | `putative_primary` (3,503), `MBp4` (1,335), `MBp1` (1,300), `MBp3` (1,284), `MBp2` (1,259) |
+| `hartenstein_hemilineage` | VARCHAR | 75.00% | 194 | BAla1 | putative_primary | `putative_primary` (3,435), `MBp4` (1,335), `MBp1` (1,300), `MBp3` (1,284), `MBp2` (1,259) |
+| `morphology_group` | VARCHAR | 84.66% | 528 | ALad1__0 | WEDd2__4 | `VLPl1_or_VLPl5__1` (293), `CREa1_dorsal_or_CREa2_medial__0` (235), `ALl1_dorsal__0` (204), `MD3__0` (196), `LHp1__0` (190) |
+| `top_nt` | VARCHAR | 0.43% | 6 | acetylcholine | serotonin | `acetylcholine` (86,194), `glutamate` (24,880), `gaba` (19,174), `dopamine` (5,909), `serotonin` (2,281) |
+| `top_nt_conf` | DOUBLE | 0.43% | 138,654 | 0.20959174566456235 | 1.0 | e.g. `0.20959174566456235`, `0.21047662135373923`, `0.21075936925712901` |
+| `known_nt` | VARCHAR | 56.94% | 73 | CCAP | serotonin, natalisin | `acetylcholine` (31,744), `glutamate` (6,884), `gaba, nitric oxide` (3,136), `acetylcholine, allatostatin-c` (3,005), `acetylcholine, sNPF, sparkly` (2,490) |
+| `known_nt_source` | VARCHAR | 56.94% | 78 | 10.1016/j.cub.2024.01.071 | Yasuyama et al., 1999; Carlsson et al., 2010 | `Davis et al., 2020` (34,357), `Takemura et al. 2011` (6,240), `Mauss et al. 2014; Shinomiya et al. 2014` (5,998), `Barnstedt et al. 2016; Aso et al. 2019` (5,177), `Yasuyama et al. 1999` (1,569) |
+| `side` | VARCHAR | 0.00% | 4 | center | right | `left` (69,959), `right` (69,093), `center` (173), `na` (28) |
+| `nerve` | VARCHAR | 93.08% | 8 | AN | aPhN | `CV` (3,687), `AN` (3,456), `MxLbN` (1,890), `OCN` (273), `PhN` (131) |
+| `vfb_id` | VARCHAR | 0.00% | 139,254 | fw000001 | fw139304 | e.g. `fw000001`, `fw000002`, `fw000003` |
+| `fbbt_id` | VARCHAR | 79.25% | 2,527 | FBbt:00049836 | FBbt_20003859 | `FBbt_00003720` (2,932), `FBbt_00111061` (2,190), `FBbt_00100248` (1,643), `FBbt_00003725` (1,606), `FBbt_00003719` (1,577) |
+| `status` | VARCHAR | 99.53% | 2 | outlier_bio | outlier_seg | `outlier_seg` (344), `outlier_bio` (312) |
