@@ -1,15 +1,18 @@
 # fly-brain-sim
 
 Visualize and simulate the whole-brain connectome of adult *Drosophila melanogaster*
-using the FlyWire FAFB v783 release. This repository currently holds the data
-foundation: download scripts, a reproducible DuckDB build and validation tests.
+using the FlyWire FAFB v783 release. So far this repository has the data
+foundation (download scripts, a reproducible DuckDB build, validation tests) and
+a 3D web viewer.
 
 ## Setup
 
-Requires [uv](https://docs.astral.sh/uv/) (it installs Python 3.12 for you).
+Requires [uv](https://docs.astral.sh/uv/) (it installs Python 3.12 for you) and,
+for the viewer, Node.js 20 or newer.
 
 ```bash
 uv sync
+npm --prefix web install
 ```
 
 ## Getting the data
@@ -28,8 +31,9 @@ Codex downloads need a FlyWire account, so they can't be scripted.
      (neuron pairs with at least 5 synapses) and once without a threshold
    - Coordinates, Labels, Processed Labels, Visual Neuron Types,
      Column Assignment, Connectivity Tags
-   - Optional: the Princeton synapse table (~2.7 GB). It is only inspected, not
-     loaded into the database.
+   - For the viewer: the skeletons, **LOD1 Healed** (~14 GB zip), and the
+     Princeton synapse table (~2.7 GB). The synapse table is optional; without it
+     the viewer just can't show synapse locations.
 3. Put them all in one folder, e.g. `~/Downloads/flywire`, and run:
 
 ```bash
@@ -37,9 +41,11 @@ uv run python scripts/import_codex.py ~/Downloads/flywire
 ```
 
 The browser's file names don't matter. Each file is recognised by its CSV
-header, and the two connection tables are told apart by their contents. Files
-are copied into `data/raw/codex/` under canonical names such as `neurons.csv.gz`.
-The synapse table is symlinked instead of copied.
+header (the skeleton zip by its `<root_id>.swc` entries), and the two connection
+tables are told apart by their contents. Files are copied into `data/raw/codex/`
+under canonical names such as `neurons.csv.gz`. Files over 1 GB (skeletons,
+synapse table) are symlinked instead, so keep the originals where they are. The
+skeletons are read straight from the zip; there is no need to unpack 33 GB.
 
 ### 2. Files from GitHub (scripted)
 
@@ -81,15 +87,58 @@ as `BIGINT`, never as floats, which would silently change them.
 Column names are normalised across sources: `root_id`, `pre_root_id`,
 `post_root_id`, `syn_count`, `cell_type`, and `x_nm`/`y_nm`/`z_nm` for positions.
 
+For the viewer, two more build steps:
+
+```bash
+uv run python scripts/build_synapses.py   # optional, ~20 s, 2.1 GB
+uv run python scripts/build_overview.py   # ~40 s, needs the skeleton zip
+```
+
+`build_synapses.py` loads the synapse table into its own database,
+`data/processed/synapses_783.duckdb`. `build_overview.py` simplifies all 139,255
+skeletons (727M nodes) into one whole-brain buffer of about 4.8M vertices
+(30 MB gzipped) in `data/processed/overview/`. It prunes side branches shorter
+than 20 µm, then keeps branch points, tips and a node every 20 µm of cable.
+
+## Viewer
+
+```bash
+npm --prefix web run build
+uv run python scripts/serve.py
+```
+
+Then open <http://127.0.0.1:8000>. For frontend development, run the API with
+`scripts/serve.py` and, in another terminal, `npm --prefix web run dev`, then open
+<http://localhost:5173>; the dev server proxies `/api` to the API.
+
+- **Whole brain:** every neuron as a simplified skeleton, coloured by super
+  class, neurotransmitter, side, hemilineage, cell type and more. Click a legend
+  entry to highlight that group.
+- **Search and inspect:** find neurons by cell type, name, community label (for
+  example "MN9") or root ID, or click one in the view. The selected neuron is shown
+  at full resolution with its details. The URL (`#neuron=<root_id>`) links to it.
+- **Connectivity:** upstream partners in cyan and downstream in orange, brighter
+  for stronger connections, with a minimum synapse count. Other neurons are dimmed
+  to a faint silhouette.
+- **Synapses:** input and output synapse locations of the selected neuron.
+
+The view is anatomical: in the front (anterior) view dorsal is up and the fly's
+right is on your left. FlyWire coordinates are left-handed (x → fly's right,
+y → ventral, z → posterior), so the viewer mirrors them; see `web/src/scene/frame.ts`.
+
 ## Checks and docs
 
 ```bash
 uv run pytest
+npm --prefix web test
 uv run python scripts/inspect_raw.py
 ```
 
-`pytest` validates the built database. `inspect_raw.py` profiles every raw file
-and regenerates [docs/data_dictionary.md](docs/data_dictionary.md).
+`pytest` validates the built database, the synapse database, the overview
+buffers and the API. Tests for the optional pieces are skipped if they haven't
+been built. `npm test` covers the frontend's decoders and colour logic.
+`inspect_raw.py` profiles every raw file and regenerates
+[docs/data_dictionary.md](docs/data_dictionary.md).
 
 Things worth knowing about the data (each is covered by a test):
 
@@ -100,6 +149,10 @@ Things worth knowing about the data (each is covered by a test):
 - Shiu's connectivity is based on a different synapse table from the Codex
   "Princeton" connections: 54.5M vs 76.9M synapses. Neuron IDs line up, but pair
   weights are not interchangeable.
+- The Codex connections are the synapse table grouped by (pre, post, neuropil),
+  without autapses, with synapses outside any neuropil labelled `UNASGD`. The one
+  exception is 212 synapses (44 groups, mostly from one R7 photoreceptor) that
+  are missing from the connection table.
 
 ## Data sources and license
 
