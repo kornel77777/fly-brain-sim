@@ -1,1 +1,117 @@
 # fly-brain-sim
+
+Visualize and simulate the whole-brain connectome of adult *Drosophila melanogaster*
+using the FlyWire FAFB v783 release. This repository currently holds the data
+foundation: download scripts, a reproducible DuckDB build and validation tests.
+
+## Setup
+
+Requires [uv](https://docs.astral.sh/uv/) (it installs Python 3.12 for you).
+
+```bash
+uv sync
+```
+
+## Getting the data
+
+Nothing under `data/` is tracked by git. There are two kinds of input.
+
+### 1. Files from FlyWire Codex (manual download)
+
+Codex downloads need a FlyWire account, so they can't be scripted.
+
+1. Sign in at <https://codex.flywire.ai> and open the download page
+   (<https://codex.flywire.ai/api/download>).
+2. Choose data version **783** and download these tables (all `.csv.gz`):
+   - Neurons, Classification, Names, Consolidated Cell Types, Cell Stats
+   - Connections (Princeton synapses), **twice**: once thresholded
+     (neuron pairs with at least 5 synapses) and once without a threshold
+   - Coordinates, Labels, Processed Labels, Visual Neuron Types,
+     Column Assignment, Connectivity Tags
+   - Optional: the Princeton synapse table (~2.7 GB). It is only inspected, not
+     loaded into the database.
+3. Put them all in one folder, e.g. `~/Downloads/flywire`, and run:
+
+```bash
+uv run python scripts/import_codex.py ~/Downloads/flywire
+```
+
+The browser's file names don't matter. Each file is recognised by its CSV
+header, and the two connection tables are told apart by their contents. Files
+are copied into `data/raw/codex/` under canonical names such as `neurons.csv.gz`.
+The synapse table is symlinked instead of copied.
+
+### 2. Files from GitHub (scripted)
+
+```bash
+uv run python scripts/fetch_external.py
+```
+
+This downloads into `data/raw/external/`, pinned to fixed commits:
+
+| file | from |
+|---|---|
+| `Connectivity_783.parquet`, `Completeness_783.csv` | [philshiu/Drosophila_brain_model](https://github.com/philshiu/Drosophila_brain_model) |
+| `Supplemental_file1_neuron_annotations.tsv` | [flyconnectome/flywire_annotations](https://github.com/flyconnectome/flywire_annotations) |
+
+Existing files are skipped, so the script is safe to re-run. The annotation file
+is pinned to the last revision whose root IDs are exactly those of v783. Later
+revisions (v3.0, October 2025 onward) swap in a few non-783 IDs.
+
+## Building the database
+
+```bash
+uv run python scripts/build_db.py
+```
+
+This builds `data/processed/flywire_783.duckdb` from scratch (about 30 s) and
+replaces any existing copy. Root IDs are 18-digit integers and are always read
+as `BIGINT`, never as floats, which would silently change them.
+
+| table | contents |
+|---|---|
+| `neurons` | one row per neuron: Codex neurons + classification + name + cell type + cell stats |
+| `annotations` | Schlegel et al. neuron annotations |
+| `connections` | Codex connections, pairs with ≥ 5 synapses, one row per (pre, post, neuropil) |
+| `connections_no_threshold` | the same without a threshold |
+| `shiu_neurons`, `shiu_connections` | the Shiu et al. model's neuron index and signed weights |
+| `coordinates`, `labels`, `processed_labels`, `visual_neuron_types`, `column_assignment`, `connectivity_tags` | other Codex per-neuron tables |
+| `build_info` | source file and row count for each table |
+
+Column names are normalised across sources: `root_id`, `pre_root_id`,
+`post_root_id`, `syn_count`, `cell_type`, and `x_nm`/`y_nm`/`z_nm` for positions.
+
+## Checks and docs
+
+```bash
+uv run pytest
+uv run python scripts/inspect_raw.py
+```
+
+`pytest` validates the built database. `inspect_raw.py` profiles every raw file
+and regenerates [docs/data_dictionary.md](docs/data_dictionary.md).
+
+Things worth knowing about the data (each is covered by a test):
+
+- The Codex figure of 3,732,460 connections counts neuron **pairs**. The
+  thresholded file has 5,342,446 rows because a pair gets one row per neuropil.
+- The Shiu model covers 138,639 of the 139,255 neurons. The 616 left out are
+  almost all sensory afferents.
+- Shiu's connectivity is based on a different synapse table from the Codex
+  "Princeton" connections: 54.5M vs 76.9M synapses. Neuron IDs line up, but pair
+  weights are not interchangeable.
+
+## Data sources and license
+
+FlyWire connectome data is released under
+[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) and may only
+be used for **non-commercial** purposes. Please cite:
+
+- Dorkenwald, S. et al. Neuronal wiring diagram of an adult brain.
+  *Nature* 634, 124–138 (2024). <https://doi.org/10.1038/s41586-024-07558-y>
+- Schlegel, P. et al. Whole-brain annotation and multi-connectome cell typing
+  of *Drosophila*. *Nature* 634, 139–152 (2024).
+  <https://doi.org/10.1038/s41586-024-07686-5>
+- Shiu, P. K. et al. A *Drosophila* computational brain model reveals
+  sensorimotor processing. *Nature* 634, 210–219 (2024).
+  <https://doi.org/10.1038/s41586-024-07763-9>
