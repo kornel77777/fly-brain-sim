@@ -52,6 +52,9 @@ NOTES = {
     "(cell types, hemilineages, predicted and known neurotransmitters, ...).",
 }
 
+# Columns with the names (or labs) of the people who contributed annotations.
+NAMES_COLUMNS = {"codex/labels.csv.gz": {"user_name", "user_affiliation"}}
+
 DATA_SUFFIXES = (".csv", ".csv.gz", ".tsv", ".tsv.gz", ".parquet")
 
 
@@ -91,7 +94,7 @@ def main() -> None:
 
     DOCS_DIR.mkdir(exist_ok=True)
     out = DOCS_DIR / "data_dictionary.md"
-    out.write_text(render_markdown(profiles, RAW_DIR, NOTES, skeletons))
+    out.write_text(render_markdown(profiles, RAW_DIR, NOTES, skeletons, NAMES_COLUMNS))
     print(f"wrote {out}")
 
 

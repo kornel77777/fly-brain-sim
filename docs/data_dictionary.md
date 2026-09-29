@@ -175,8 +175,8 @@ Downloaded by hand from FlyWire Codex (https://codex.flywire.ai/api/download), v
 | `supervoxel_id` | BIGINT | 0.00% | 137,667 | 72133667035690403 | 86135672737462303 | `77620779478609199` (9), `77761516900077460` (9), `77831816924367499` (9), `77973035516705981` (9), `77973104236267510` (9) |
 | `label_id` | BIGINT | 0.00% | 160,045 | 1 | 171811 | e.g. `1`, `10`, `100` |
 | `date_created` | TIMESTAMP | 0.00% | 52,155 | 2022-02-07 04:55:09 | 2025-06-03 04:08:50 | `2023-10-12 07:16:30` (1,655), `2023-10-12 07:16:40` (1,647), `2023-10-12 07:16:29` (1,618), `2023-10-12 07:16:28` (1,060), `2022-02-07 05:29:38` (922) |
-| `user_name` | VARCHAR | 0.41% | 151 | Alexander Bates | st0ck53y | `Krzysztof Kruk` (48,253), `Lab Members` (13,761), `Alexander Bates` (11,259), `Dustin Garner` (6,594), `Katharina Eichler` (6,364) |
-| `user_affiliation` | VARCHAR | 0.45% | 58 | Ache Lab | Young-Joon Kim Lab | `Eyewire` (56,348), `Mala Murthy Lab, Sebastian Seung Lab` (34,655), `Volker Hartenstein Lab` (13,761), `Greg Jefferis Lab, Rachel Wilson Lab` (11,259), `Greg Jefferis Lab` (8,843) |
+| `user_name` | VARCHAR | 0.41% | 151 | | | (people's names, not shown) |
+| `user_affiliation` | VARCHAR | 0.45% | 58 | | | (people's names, not shown) |
 
 ## `codex/names.csv.gz`
 

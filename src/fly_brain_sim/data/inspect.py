@@ -244,7 +244,11 @@ def render_markdown(
     raw_dir: Path,
     notes: dict[str, str],
     skeletons: list[SkeletonZipProfile] = (),
+    names_columns: dict[str, set[str]] | None = None,
 ) -> str:
+    """`names_columns` maps a file to columns holding people's names; their values
+    are left out of the dictionary."""
+    names_columns = names_columns or {}
     out = [
         "# Data dictionary",
         "",
@@ -302,7 +306,14 @@ def render_markdown(
             "| column | type | missing | distinct | min | max | representative values |",
             "|---|---|---:|---:|---|---|---|",
         ]
+        hidden = names_columns.get(rel, set())
         for c in p.columns:
+            if c.name in hidden:
+                out.append(
+                    f"| `{_cell(c.name)}` | {c.dtype} | {c.null_pct:.2f}% | {c.distinct:,} "
+                    "| | | (people's names, not shown) |"
+                )
+                continue
             out.append(
                 f"| `{_cell(c.name)}` | {c.dtype} | {c.null_pct:.2f}% | {c.distinct:,} "
                 f"| {_cell(c.min or '')} | {_cell(c.max or '')} | {_values(c)} |"
