@@ -222,6 +222,9 @@ Things worth knowing about the data (each is covered by a test):
 
 ## Data sources and license
 
+The code in this repository is released under the [MIT License](LICENSE). No
+FlyWire data is included; it is downloaded separately and keeps its own license.
+
 FlyWire connectome data is released under
 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) and may only
 be used for **non-commercial** purposes. Please cite:
