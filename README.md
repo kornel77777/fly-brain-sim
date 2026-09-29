@@ -136,6 +136,13 @@ Then open <http://127.0.0.1:8000>. For frontend development, run the API with
   for stronger connections, with a minimum synapse count. Other neurons are dimmed
   to a faint silhouette.
 - **Synapses:** input and output synapse locations of the selected neuron.
+- **Stimulate:** switch on a group of neurons and watch activity spread, slowed
+  down: firing neurons glow on a heat scale and brain regions glow with the
+  activity inside them. Choose a preset (sweet taste, bitter taste, pheromone
+  smell, hearing), or the neuron, cell type or region you have selected. Each
+  preset reports its key neurons, e.g. whether the feeding motor neuron MN9 fires
+  (it does for sweet, not for bitter). Short explanations cover how the model
+  works and its limits.
 
 The view is anatomical: in the front (anterior) view dorsal is up and the fly's
 right is on your left. FlyWire coordinates are left-handed (x → fly's right,
