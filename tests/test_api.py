@@ -157,8 +157,8 @@ def test_sim_sugar_drives_mn9(client):
     ).json()
     assert len(body["stimulated"]) == 20
     assert body["n_bins"] == 100 and len(body["counts"]) == len(body["active"]) * 100
-    mn9 = next(t for t in body["top"] if t["root_id"] == str(MN9))
-    assert mn9["rate_hz"] > 50
+    mn9 = next(w for w in body["watch"] if w["label"].startswith("MN9") and "right" in w["label"])
+    assert mn9["n_active"] == 1 and mn9["rate_hz"] > 50
     names = body["regions"]["names"]
     per_region = np.array(body["regions"]["counts"]).reshape(len(names), -1).sum(axis=1)
     assert names[int(per_region.argmax())] == "GNG"  # taste and feeding
@@ -181,3 +181,10 @@ def test_sim_other_targets_and_validation(client):
         "/api/sim/run", json={"target": {"kind": "preset", "id": "sugar"}, "rate_hz": 5000}
     )
     assert too_fast.status_code == 422
+
+
+def test_sim_bitter_leaves_mn9_silent(client):
+    # Bitter taste suppresses feeding; in the model it does not drive MN9.
+    body = client.post("/api/sim/run", json={"target": {"kind": "preset", "id": "bitter"}}).json()
+    mn9 = [w for w in body["watch"] if w["label"].startswith("MN9")]
+    assert len(mn9) == 2 and all(w["rate_hz"] < 5 for w in mn9)

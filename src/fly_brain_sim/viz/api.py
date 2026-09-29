@@ -24,7 +24,7 @@ from pydantic import BaseModel, Field
 
 from fly_brain_sim.data.paths import DB_PATH, OVERVIEW_DIR, REPO_ROOT, SYNAPSES_DB_PATH
 from fly_brain_sim.data.skeletons import SKELETON_ZIP, SkeletonZip
-from fly_brain_sim.sim.experiment import PRESETS, resolve_target, run_experiment
+from fly_brain_sim.sim.experiment import PRESETS, resolve_target, resolve_watch, run_experiment
 from fly_brain_sim.sim.lif import Network
 from fly_brain_sim.viz import overview, regions
 
@@ -462,6 +462,7 @@ def create_app(
             duration_ms=req.duration_ms,
             bin_ms=req.bin_ms,
             seed=req.seed,
+            watch=resolve_watch(cur, req.target),
         )
         return {"label": label, **result}
 

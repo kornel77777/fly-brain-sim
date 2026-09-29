@@ -21,12 +21,22 @@ SUGAR_630 = [
 MAX_STIMULATED = 300  # larger groups (e.g. a whole region) are sampled down
 
 
+MN9_RIGHT = 720575940660219265  # proboscis motor neuron 9 (the one used by Shiu et al.)
+MN9_LEFT = 720575940618238523
+
+MN9_WATCH = (
+    ("MN9, proboscis motor neuron (right)", f"select {MN9_RIGHT}"),
+    ("MN9, proboscis motor neuron (left)", f"select {MN9_LEFT}"),
+)
+
+
 @dataclass(frozen=True)
 class Preset:
     id: str
     label: str
     description: str
     sql: str  # returns root_id
+    watch: tuple[tuple[str, str], ...] = ()  # (label, sql returning root_id): key neurons
 
 
 PRESETS = [
@@ -38,6 +48,7 @@ PRESETS = [
         "extends the proboscis to feed. Watch activity travel through the gnathal ganglia "
         "to MN9.",
         "select root_id from neurons where root_id in (" + ", ".join(map(str, SUGAR_630)) + ")",
+        MN9_WATCH,
     ),
     Preset(
         "bitter",
@@ -47,6 +58,7 @@ PRESETS = [
         "MN9 fire?",
         "select root_id from neurons "
         "where class = 'gustatory' and sub_class = 'bitter' and side = 'right'",
+        MN9_WATCH,
     ),
     Preset(
         "pheromone",
@@ -55,6 +67,16 @@ PRESETS = [
         "a male pheromone. They all converge on one glomerulus (DA1) of the antennal lobe; "
         "projection neurons carry the signal on to the lateral horn and mushroom body.",
         "select root_id from neurons where cell_type = 'ORN_DA1' and side = 'right'",
+        (
+            (
+                "DA1 projection neurons (right), to lateral horn and calyx",
+                "select root_id from neurons where cell_type = 'DA1_lPN' and side = 'right'",
+            ),
+            (
+                "DA1 projection neurons (left)",
+                "select root_id from neurons where cell_type = 'DA1_lPN' and side = 'left'",
+            ),
+        ),
     ),
     Preset(
         "hearing",
@@ -63,9 +85,23 @@ PRESETS = [
         "sound and vibration. They feed the AMMC and wedge, the first stages of processing "
         "courtship song.",
         "select root_id from neurons where cell_type in ('JO-A', 'JO-B') and side = 'right'",
+        (
+            (
+                "Giant Fiber (DNp01), which triggers the escape jump",
+                "select root_id from neurons where cell_type = 'DNp01'",
+            ),
+        ),
     ),
 ]
 PRESETS_BY_ID = {p.id: p for p in PRESETS}
+
+
+def resolve_watch(con: duckdb.DuckDBPyConnection, target: dict) -> list[tuple[str, list[int]]]:
+    """Key neurons to report for a target (only presets define them)."""
+    preset = PRESETS_BY_ID.get(target.get("id", "")) if target.get("kind") == "preset" else None
+    if preset is None:
+        return []
+    return [(label, [r[0] for r in con.execute(sql).fetchall()]) for label, sql in preset.watch]
 
 
 def resolve_target(con: duckdb.DuckDBPyConnection, target: dict) -> tuple[str, list[int]]:
@@ -112,6 +148,7 @@ def run_experiment(
     bin_ms: float = 5.0,
     seed: int = 0,
     top_n: int = 25,
+    watch: list[tuple[str, list[int]]] = (),
 ) -> dict:
     """Stimulate `root_ids` and summarise the response for display.
 
@@ -194,8 +231,28 @@ def run_experiment(
             }
         )
 
+    # Key neurons: mean rate and earliest spike, whether or not they responded.
+    row_of = {int(net.root_ids[m]): k for k, m in enumerate(active_model)}
+    watched = []
+    for label, ids in watch:
+        rows = [row_of[r] for r in ids if r in row_of]
+        first = [float(first_bin[k] * bin_ms) for k in rows]
+        watched.append(
+            {
+                "label": label,
+                "n": len(ids),
+                "n_active": len(rows),
+                "rate_hz": round(float(rates[rows].sum() / max(1, len(ids))), 1),
+                "first_spike_ms": round(min(first), 1) if first else None,
+                "indices": np.searchsorted(overview_root_ids, np.array(ids, dtype=np.int64))
+                .astype(int)
+                .tolist(),
+            }
+        )
+
     return {
         "n_requested": n_requested,
+        "watch": watched,
         "n_not_in_model": n_requested - len(set(root_ids) & set(model_index)),
         "sampled": sampled,
         "stimulated": stimulated.tolist(),
