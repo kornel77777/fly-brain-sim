@@ -12,6 +12,10 @@ a 3D web viewer.
 
 Shout out to the FlyWire Consortium!!! (the Seung and Murthy labs at Princeton, the Jefferis lab at Cambridge, and the citizen scientists)
 
+<p align="center">
+  <img src="docs/fly-brain-pic.png" alt="The viewer: brain regions as translucent outlines with one example neuron per cell type, coloured by super class" width="820">
+</p>
+
 ## Setup
 
 Requires [uv](https://docs.astral.sh/uv/) (it installs Python 3.12 for you) and,
