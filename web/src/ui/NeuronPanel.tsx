@@ -1,8 +1,9 @@
 import type { Direction, Partner } from '../api'
 import { BOTH, DOWNSTREAM, UPSTREAM, rgbCss } from '../colors'
+import { FIELD_HELP, regionInfo } from '../content'
 import { useStore, type SynapseDirection } from '../store'
 
-const PARTNER_ROWS = 15
+const PARTNER_ROWS = 8
 const NT_FIELDS = ['ach_avg', 'gaba_avg', 'glut_avg', 'da_avg', 'ser_avg', 'oct_avg'] as const
 
 export function NeuronPanel() {
@@ -14,17 +15,10 @@ export function NeuronPanel() {
   const togglePartners = useStore((s) => s.togglePartners)
   const showSynapses = useStore((s) => s.showSynapses)
   const toggleSynapses = useStore((s) => s.toggleSynapses)
-  const contextBrightness = useStore((s) => s.contextBrightness)
-  const setContextBrightness = useStore((s) => s.setContextBrightness)
+  const selectRegion = useStore((s) => s.selectRegion)
   const hasSynapses = useStore((s) => s.meta?.has_synapses ?? false)
 
-  if (!selection) {
-    return (
-      <section>
-        <p className="muted small">Click a neuron in the view or pick a search result.</p>
-      </section>
-    )
-  }
+  if (!selection) return null
   const { info, partners, synapses } = selection
   const n = info?.neuron
   const a = info?.annotations
@@ -45,21 +39,47 @@ export function NeuronPanel() {
       </div>
       {!info && <p className="muted small">Loading…</p>}
       {n && (
-        <dl>
-          <Item k="Name" v={n.name} />
-          <Item k="Super class" v={n.super_class} />
-          <Item k="Class" v={[n.class, n.sub_class].filter(Boolean).join(' / ') || null} />
-          <Item k="Hemibrain type" v={a?.hemibrain_type ?? null} />
-          <Item k="Side" v={n.side} />
-          <Item k="Hemilineage" v={n.ito_lee_hemilineage} />
-          <Item
-            k="Neurotransmitter"
-            v={n.nt_type ? `${n.nt_type} (${Number(n.nt_type_score).toFixed(2)})` : 'unassigned'}
-          />
-          <Item k="Inputs" v={`${info.input_synapses.toLocaleString()} synapses`} />
-          <Item k="Outputs" v={`${info.output_synapses.toLocaleString()} synapses`} />
-          <Item k="Shiu model" v={info.shiu_index !== null ? `index ${info.shiu_index}` : 'not in model'} />
-        </dl>
+        <>
+          <p className="explain">
+            {FIELD_HELP.super_class.values?.[n.super_class as string] ?? ''}{' '}
+            {n.nt_type
+              ? FIELD_HELP.nt_type.values?.[n.nt_type as string]
+              : 'Its neurotransmitter could not be predicted confidently.'}
+          </p>
+          <dl>
+            {n.home_neuropil && (
+              <>
+                <dt>Mostly in</dt>
+                <dd>
+                  <button className="link" onClick={() => selectRegion(n.home_neuropil as string)}>
+                    {regionInfo(n.home_neuropil as string).name}
+                  </button>
+                </dd>
+              </>
+            )}
+            <Item k="Receives" v={`${info.input_synapses.toLocaleString()} synapses`} />
+            <Item k="Sends" v={`${info.output_synapses.toLocaleString()} synapses`} />
+          </dl>
+          <details className="more">
+            <summary className="small muted">More details</summary>
+            <dl>
+              <Item k="Name" v={n.name} />
+              <Item k="Super class" v={n.super_class} />
+              <Item k="Class" v={[n.class, n.sub_class].filter(Boolean).join(' / ') || null} />
+              <Item k="Hemibrain type" v={a?.hemibrain_type ?? null} />
+              <Item k="Side" v={n.side} />
+              <Item k="Hemilineage" v={n.ito_lee_hemilineage} />
+              <Item
+                k="Neurotransmitter"
+                v={n.nt_type ? `${n.nt_type} (${Number(n.nt_type_score).toFixed(2)})` : 'unassigned'}
+              />
+              <Item
+                k="Shiu model"
+                v={info.shiu_index !== null ? `index ${info.shiu_index}` : 'not in model'}
+              />
+            </dl>
+          </details>
+        </>
       )}
       {n && <NtBar neuron={n} />}
 
@@ -74,17 +94,6 @@ export function NeuronPanel() {
           onChange={(e) => setMinSyn(Number(e.target.value))}
         />
         <span className="mono small">{minSyn}</span>
-      </label>
-      <label className="row">
-        <span>Other neurons</span>
-        <input
-          type="range"
-          min={0}
-          max={0.6}
-          step={0.01}
-          value={contextBrightness}
-          onChange={(e) => setContextBrightness(Number(e.target.value))}
-        />
       </label>
       {(['upstream', 'downstream'] as Direction[]).map((d) => (
         <PartnerList

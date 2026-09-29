@@ -246,23 +246,158 @@ dd {
   min-width: 0;
 }
 
-.views {
+.toolbar {
   position: absolute;
   top: 12px;
+  left: 12px;
   right: 12px;
   display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  pointer-events: none;
+}
+
+.segmented {
+  display: flex;
+  pointer-events: auto;
+  background: rgba(13, 16, 23, 0.85);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.segmented button {
+  background: none;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  color: var(--muted);
+}
+
+.segmented button:hover {
+  color: var(--text);
+}
+
+.segmented button.active {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+.tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(13, 16, 23, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  padding: 0 12px;
   gap: 4px;
 }
 
-.views button {
-  background: rgba(13, 16, 23, 0.85);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 4px 10px;
+.tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 8px 6px;
+  color: var(--muted);
 }
 
-.views button:hover {
+.tab.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.intro {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.intro p {
+  margin: 6px 0;
+  color: var(--muted);
+}
+
+.intro-toggle {
+  margin-top: 4px;
+}
+
+.explain {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0 6px;
+}
+
+.chip {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 12px;
+}
+
+.chip:hover {
   border-color: var(--accent);
+}
+
+details.group {
+  border-top: 1px solid var(--line);
+  padding: 6px 0;
+}
+
+details.group summary,
+details.more summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+
+details.group summary::-webkit-details-marker,
+details.more summary::-webkit-details-marker {
+  display: none;
+}
+
+details.group p {
+  color: var(--muted);
+  margin: 6px 0;
+}
+
+.flows {
+  margin: 2px 0 6px;
+}
+
+.bar {
+  width: 70px;
+  height: 5px;
+  background: var(--panel-2);
+  border-radius: 3px;
+  overflow: hidden;
+  flex: none;
+}
+
+.bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
 }
 
 .overlay {

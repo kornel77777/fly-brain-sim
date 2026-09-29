@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react'
 import { categoryColors, rgbCss } from '../colors'
+import { FIELD_HELP, regionInfo } from '../content'
 import { useStore } from '../store'
 
-const LEGEND_ROWS = 12
+const LEGEND_ROWS = 8
 
 const LABELS: Record<string, string> = {
   super_class: 'Super class',
+  home_neuropil: 'Brain region',
   flow: 'Flow',
   class: 'Class',
   sub_class: 'Sub class',
@@ -35,12 +37,14 @@ export function ColorPanel() {
   )
   if (!meta || !field) return null
 
+  const help = FIELD_HELP[colorField]
+  const label = (cat: string) => (colorField === 'home_neuropil' ? regionInfo(cat).name : cat)
   const rows = expanded ? field.categories.length : Math.min(LEGEND_ROWS, field.categories.length)
   const missing = field.codes.filter((c) => c < 0).length
 
   return (
     <section>
-      <h2>Color</h2>
+      <h2>Colors</h2>
       <label className="row">
         <span>By</span>
         <select value={colorField} onChange={(e) => setColorField(e.target.value)}>
@@ -51,6 +55,7 @@ export function ColorPanel() {
           ))}
         </select>
       </label>
+      {help && <p className="small muted">{help.about}</p>}
       <label className="row">
         <span>Opacity</span>
         <input
@@ -73,10 +78,10 @@ export function ColorPanel() {
                   select(null)
                   setFocus(active ? null : { kind: 'category', field: colorField, code, label: cat })
                 }}
-                title="Highlight this category"
+                title={help?.values?.[cat] ?? 'Highlight this group'}
               >
                 <span className="dot" style={{ background: rgbCss(colors[code]) }} />
-                <span className="grow">{cat}</span>
+                <span className="grow">{label(cat)}</span>
                 <span className="small muted">{field.counts[code].toLocaleString()}</span>
               </button>
             </li>
