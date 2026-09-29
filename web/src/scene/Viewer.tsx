@@ -1,11 +1,13 @@
 import { OrbitControls } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { Vector3, type PerspectiveCamera } from 'three'
+import { useEffect, useMemo, useRef } from 'react'
+import { Raycaster, Vector2, Vector3, type PerspectiveCamera } from 'three'
 import { DOWNSTREAM, UPSTREAM, rgbCss } from '../colors'
 import { useStore } from '../store'
 import { brainFrame } from './frame'
 import { Overview } from './Overview'
+import { pickers } from './picking'
+import { Regions } from './Regions'
 import { SelectedNeuron } from './SelectedNeuron'
 import { Synapses } from './Synapses'
 import { useColorTable } from './useColorTable'
@@ -93,14 +95,104 @@ function OrientationLabels({ size }: { size: Size }) {
   return null
 }
 
+const CLICK_SLOP = 4 // px of pointer movement still treated as a click
+const HOVER_MS = 60
+
+/** Click: pick a neuron, else a region. Hover: name the region under the pointer. */
+function CanvasInput() {
+  const gl = useThree((s) => s.gl)
+  const camera = useThree((s) => s.camera)
+  const attributes = useStore((s) => s.attributes)
+  const select = useStore((s) => s.select)
+  const selectRegion = useStore((s) => s.selectRegion)
+  const setHover = useStore((s) => s.setHover)
+
+  useEffect(() => {
+    const el = gl.domElement
+    const raycaster = new Raycaster()
+    const ndc = new Vector2()
+    const regionAt = (x: number, y: number, rect: DOMRect) => {
+      if (!pickers.region) return null
+      ndc.set((x / rect.width) * 2 - 1, -(y / rect.height) * 2 + 1)
+      raycaster.setFromCamera(ndc, camera)
+      return pickers.region(raycaster.ray)
+    }
+
+    let down: { x: number; y: number } | null = null
+    let lastHover = 0
+    const onDown = (e: PointerEvent) => {
+      down = { x: e.clientX, y: e.clientY }
+    }
+    const onUp = (e: PointerEvent) => {
+      if (!down || e.button !== 0) return
+      const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y)
+      down = null
+      if (moved > CLICK_SLOP) return
+      const rect = el.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      const neuron = pickers.neuron?.(x, y) ?? null
+      if (neuron !== null && attributes) {
+        select(attributes.root_ids[neuron])
+        return
+      }
+      const region = regionAt(x, y, rect)
+      if (region) selectRegion(region)
+    }
+    const onMove = (e: PointerEvent) => {
+      if (e.buttons !== 0) return
+      const now = performance.now()
+      if (now - lastHover < HOVER_MS) return
+      lastHover = now
+      const rect = el.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      const region = regionAt(x, y, rect)
+      setHover(region ? { region, x, y } : null)
+    }
+    const onLeave = () => setHover(null)
+    el.addEventListener('pointerdown', onDown)
+    el.addEventListener('pointerup', onUp)
+    el.addEventListener('pointermove', onMove)
+    el.addEventListener('pointerleave', onLeave)
+    return () => {
+      el.removeEventListener('pointerdown', onDown)
+      el.removeEventListener('pointerup', onUp)
+      el.removeEventListener('pointermove', onMove)
+      el.removeEventListener('pointerleave', onLeave)
+    }
+  }, [gl, camera, attributes, select, selectRegion, setHover])
+  return null
+}
+
+const REGION_OPACITY = { regions: 0.9, sketch: 0.55, all: 0.3 }
+
+/** Per-region emphasis: 1 normal, higher for hovered/selected, lower for the rest. */
+function useRegionEmphasis(): Float32Array | null {
+  const regions = useStore((s) => s.regions)
+  const region = useStore((s) => s.region)
+  const hover = useStore((s) => s.hover?.region ?? null)
+  const neuronSelected = useStore((s) => s.selection !== null)
+  return useMemo(() => {
+    if (!regions) return null
+    return Float32Array.from(regions.regions, (r) => {
+      if (r.name === region) return 3
+      if (r.name === hover) return 2
+      if (region) return 0.45
+      return neuronSelected ? 0.6 : 1
+    })
+  }, [regions, region, hover, neuronSelected])
+}
+
 function Scene() {
   const overview = useStore((s) => s.overview)
   const selection = useStore((s) => s.selection)
   const showSynapses = useStore((s) => s.showSynapses)
-  const attributes = useStore((s) => s.attributes)
-  const select = useStore((s) => s.select)
   const colors = useColorTable()
   const contextBrightness = useStore((s) => s.contextBrightness)
+  const regions = useStore((s) => s.regions)
+  const detail = useStore((s) => s.detail)
+  const emphasis = useRegionEmphasis()
   const invalidate = useThree((s) => s.invalidate)
 
   // frameloop="demand": adding or removing layers doesn't redraw by itself.
@@ -108,25 +200,23 @@ function Scene() {
     invalidate()
   })
 
-  const onPick = useCallback(
-    (index: number) => {
-      if (attributes) select(attributes.root_ids[index])
-    },
-    [attributes, select],
-  )
-
-  const frame = useMemo(() => (overview ? brainFrame(overview.meta) : null), [overview])
-  if (!overview || !colors || !frame) return null
+  const meta = useStore((s) => s.meta)
+  const frame = useMemo(() => (meta ? brainFrame(meta.overview) : null), [meta])
+  if (!frame) return null
   return (
     <>
       <group position={frame.position} scale={frame.scale}>
-        <Overview
-          data={overview}
-          colorTable={colors.table}
-          highlighting={colors.highlighting}
-          contextBrightness={contextBrightness}
-          onPick={onPick}
-        />
+        {regions && emphasis && (
+          <Regions data={regions} emphasis={emphasis} opacity={REGION_OPACITY[detail]} />
+        )}
+        {overview && colors && (
+          <Overview
+            data={overview}
+            colorTable={colors.table}
+            highlighting={colors.highlighting}
+            contextBrightness={contextBrightness}
+          />
+        )}
         {selection?.skeleton && <SelectedNeuron skeleton={selection.skeleton} />}
         {showSynapses.outgoing && selection?.synapses.outgoing && (
           <Synapses data={selection.synapses.outgoing} color={rgbCss(DOWNSTREAM)} />
@@ -137,6 +227,7 @@ function Scene() {
       </group>
       <OrientationLabels size={frame.size} />
       <CameraRig size={frame.size} />
+      <CanvasInput />
     </>
   )
 }

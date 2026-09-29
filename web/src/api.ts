@@ -22,6 +22,7 @@ export interface Meta {
   overview: OverviewMeta
   color_fields: string[]
   has_synapses: boolean
+  has_regions: boolean
 }
 
 export interface Field {
@@ -33,6 +34,32 @@ export interface Field {
 export interface Attributes {
   root_ids: string[]
   fields: Record<string, Field>
+  representatives: number[] // one neuron per cell type and side
+}
+
+export interface RegionFlow {
+  region: string
+  synapses: number
+}
+
+export interface RegionStats {
+  name: string // neuropil code, e.g. AL_R
+  vertex_offset: number
+  vertex_count: number
+  index_offset: number
+  index_count: number
+  centroid_nm: [number, number, number]
+  synapses: number
+  home_neurons: number
+  top_cell_types: { cell_type: string; synapses: number }[]
+  flows_in: RegionFlow[]
+  flows_out: RegionFlow[]
+}
+
+export interface Regions {
+  regions: RegionStats[]
+  vertices: Float32Array // nm
+  indices: Uint32Array
 }
 
 export interface NeuronSummary {
@@ -103,6 +130,19 @@ export const api = {
       new Uint32Array(parentDelta),
     )
     return { meta, positions: new Uint16Array(positions), index, neuron }
+  },
+
+  async regions(): Promise<Regions> {
+    const [meta, vertices, indices] = await Promise.all([
+      json<{ regions: RegionStats[] }>('/api/regions'),
+      binary('/api/regions/vertices.f32'),
+      binary('/api/regions/indices.u32'),
+    ])
+    return {
+      regions: meta.regions,
+      vertices: new Float32Array(vertices),
+      indices: new Uint32Array(indices),
+    }
   },
 
   search: (q: string, limit = 50) =>

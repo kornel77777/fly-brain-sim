@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import type { Overview as OverviewData } from '../api'
 import { TEXTURE_WIDTH, textureRows } from '../colors'
+import { pickers } from './picking'
 
 // The colour table's alpha decides which pass draws a neuron:
 //   alpha > 0   main pass, normal alpha blending (the usual view, or highlighted neurons)
@@ -52,8 +53,9 @@ const pickVertexShader = /* glsl */ `
 
   void main() {
     int i = int(neuron + 0.5);
-    float alpha = texelFetch(colors, ivec2(i % W, i / W), 0).a;
-    float visible = alpha > 0.0 ? 1.0 : uPickContext;
+    vec4 c = texelFetch(colors, ivec2(i % W, i / W), 0);
+    float drawn = step(0.001, max(c.r, max(c.g, c.b)));  // hidden neurons are black
+    float visible = c.a > 0.0 ? 1.0 : uPickContext * drawn;
     int id = i + 1;
     vId = vec4(float(id & 255) / 255.0, float((id >> 8) & 255) / 255.0,
                float((id >> 16) & 255) / 255.0, visible);
@@ -71,7 +73,6 @@ const pickFragmentShader = /* glsl */ `
 `
 
 const PICK_RADIUS = 6 // px around the cursor; lines are 1 px wide
-const CLICK_SLOP = 4 // px of pointer movement still treated as a click
 
 function setUniform(material: THREE.ShaderMaterial, name: string, value: number) {
   material.uniforms[name].value = value
@@ -87,10 +88,9 @@ interface Props {
   colorTable: Uint8Array
   highlighting: boolean // whether the context pass is needed
   contextBrightness: number // 0 hides non-highlighted neurons
-  onPick: (index: number) => void
 }
 
-export function Overview({ data, colorTable, highlighting, contextBrightness, onPick }: Props) {
+export function Overview({ data, colorTable, highlighting, contextBrightness }: Props) {
   const { gl, camera, size, invalidate } = useThree()
   const meshRef = useRef<THREE.LineSegments>(null)
 
@@ -183,28 +183,16 @@ export function Overview({ data, colorTable, highlighting, contextBrightness, on
     [geometry, texture, material, contextMaterial, picker],
   )
 
-  // Click (not drag) on the canvas -> pick the nearest visible neuron.
+  // GPU picking: render neuron ids into a small patch around the cursor and
+  // take the hit nearest to its centre. Registered for the canvas click handler.
   useEffect(() => {
-    const el = gl.domElement
-    let down: { x: number; y: number } | null = null
-    const onDown = (e: PointerEvent) => {
-      down = { x: e.clientX, y: e.clientY }
-    }
-    const onUp = (e: PointerEvent) => {
-      if (!down || e.button !== 0) return
-      const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y)
-      down = null
-      if (moved > CLICK_SLOP || !meshRef.current) return
-      const rect = el.getBoundingClientRect()
-      const index = pick(e.clientX - rect.left, e.clientY - rect.top)
-      if (index !== null) onPick(index)
-    }
-    const pick = (x: number, y: number): number | null => {
+    pickers.neuron = (x: number, y: number): number | null => {
+      if (!meshRef.current) return null
       const { scene, mesh, target, side } = picker
       ;(mesh.material as THREE.ShaderMaterial).uniforms.uPickContext.value = showContext ? 1 : 0
-      meshRef.current!.updateWorldMatrix(true, false)
-      mesh.matrix.copy(meshRef.current!.matrixWorld)
-      mesh.matrixWorld.copy(meshRef.current!.matrixWorld)
+      meshRef.current.updateWorldMatrix(true, false)
+      mesh.matrix.copy(meshRef.current.matrixWorld)
+      mesh.matrixWorld.copy(meshRef.current.matrixWorld)
       const cam = camera as THREE.PerspectiveCamera
       cam.setViewOffset(size.width, size.height, x - PICK_RADIUS, y - PICK_RADIUS, side, side)
       const prevTarget = gl.getRenderTarget()
@@ -236,13 +224,10 @@ export function Overview({ data, colorTable, highlighting, contextBrightness, on
       }
       return best
     }
-    el.addEventListener('pointerdown', onDown)
-    el.addEventListener('pointerup', onUp)
     return () => {
-      el.removeEventListener('pointerdown', onDown)
-      el.removeEventListener('pointerup', onUp)
+      pickers.neuron = null
     }
-  }, [gl, camera, size, picker, onPick, showContext])
+  }, [gl, camera, size, picker, showContext])
 
   return (
     <>

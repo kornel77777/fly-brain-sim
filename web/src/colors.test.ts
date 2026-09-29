@@ -45,6 +45,18 @@ describe('buildColorTable', () => {
   })
 })
 
+describe('buildColorTable visibility', () => {
+  it('blanks hidden neurons but still draws them when highlighted', () => {
+    const colors = [hexToRgb('#ff0000')]
+    const visible = new Uint8Array([1, 0, 0])
+    const highlight = new Map([[2, [9, 9, 9, 99] as [number, number, number, number]]])
+    const t = buildColorTable({ n: 3, codes: [0, 0, 0], colors, alpha: 1, visible, highlight })
+    expect(Array.from(t.slice(0, 4))).toEqual([255, 0, 0, 0]) // context: colour kept, alpha 0
+    expect(Array.from(t.slice(4, 8))).toEqual([0, 0, 0, 0]) // hidden
+    expect(Array.from(t.slice(8, 12))).toEqual([9, 9, 9, 99]) // highlighted wins
+  })
+})
+
 describe('partnerHighlight', () => {
   it('colours by direction, marks reciprocal partners, and scales alpha by weight', () => {
     const h = partnerHighlight(

@@ -4,6 +4,8 @@
 export type RGB = [number, number, number]
 export type RGBA = [number, number, number, number]
 
+import { regionInfo } from './content'
+
 export const TEXTURE_WIDTH = 1024
 
 const PALETTE: string[] = [
@@ -47,6 +49,8 @@ function hslToRgb(h: number, s: number, l: number): RGB {
 
 /** Colour for each category (categories are sorted by frequency). */
 export function categoryColors(field: string, categories: string[]): RGB[] {
+  // Colour neurons by region with the same system colours as the region shapes.
+  if (field === 'home_neuropil') return categories.map((c) => hexToRgb(regionInfo(c).group.color))
   const fixed = FIXED[field] ?? {}
   return categories.map((c, i) => {
     if (fixed[c]) return hexToRgb(fixed[c])
@@ -61,6 +65,7 @@ export interface ColorTableOptions {
   codes: ArrayLike<number> | null // category per neuron, -1 = missing
   colors: RGB[]
   alpha: number // 0..1 for neurons in the normal state
+  visible?: Uint8Array | null // 0 = not drawn at all (unless highlighted)
   highlight?: Map<number, RGBA> | null // non-null = highlight mode; index -> colour override
   othersAlpha?: number // alpha for everything else while highlighting
 }
@@ -75,9 +80,14 @@ export function buildColorTable(o: ColorTableOptions, out?: Uint8Array): Uint8Ar
   const highlighting = o.highlight != null
   const a = Math.round(255 * (highlighting ? (o.othersAlpha ?? 0) : o.alpha))
   for (let i = 0; i < o.n; i++) {
+    const k = i * 4
+    if (o.visible && !o.visible[i]) {
+      // black + transparent: invisible in both the normal and the (MAX-blended) context pass
+      table[k] = table[k + 1] = table[k + 2] = table[k + 3] = 0
+      continue
+    }
     const code = o.codes ? o.codes[i] : -1
     const c = code >= 0 ? o.colors[code] : MISSING
-    const k = i * 4
     table[k] = c[0]
     table[k + 1] = c[1]
     table[k + 2] = c[2]

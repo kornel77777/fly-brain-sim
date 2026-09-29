@@ -7,6 +7,7 @@ import {
   type NeuronInfo,
   type Overview,
   type Partner,
+  type Regions,
 } from './api'
 import type { SkeletonData, SynapseData } from './decode'
 
@@ -15,6 +16,11 @@ export type Focus =
   | { kind: 'set'; label: string; indices: number[] }
 
 export type SynapseDirection = 'outgoing' | 'incoming'
+
+/** How much of the brain to draw: regions only, one neuron per cell type, or everything. */
+export type Detail = 'regions' | 'sketch' | 'all'
+
+export type Tab = 'explore' | 'regions' | 'stimulate'
 
 interface Selection {
   rootId: string
@@ -31,7 +37,12 @@ interface State {
   meta: Meta | null
   attributes: Attributes | null
   overview: Overview | null
+  regions: Regions | null
 
+  tab: Tab
+  detail: Detail
+  region: string | null // selected region (neuropil code)
+  hover: { region: string; x: number; y: number } | null // region under the pointer
   colorField: string
   opacity: number
   contextBrightness: number // 0..1 brightness of neurons outside a highlight; 0 hides them
@@ -43,6 +54,10 @@ interface State {
   showSynapses: Record<SynapseDirection, boolean>
 
   load: () => Promise<void>
+  setTab: (t: Tab) => void
+  setDetail: (d: Detail) => void
+  selectRegion: (code: string | null) => void
+  setHover: (h: State['hover']) => void
   setColorField: (field: string) => void
   setOpacity: (v: number) => void
   setContextBrightness: (v: number) => void
@@ -73,9 +88,14 @@ export const useStore = create<State>((set, get) => ({
   meta: null,
   attributes: null,
   overview: null,
+  regions: null,
 
+  tab: 'explore',
+  detail: 'sketch',
+  region: null,
+  hover: null,
   colorField: 'super_class',
-  opacity: 0.22,
+  opacity: 0.3,
   contextBrightness: 0.18,
   focus: null,
 
@@ -91,6 +111,9 @@ export const useStore = create<State>((set, get) => ({
     try {
       const meta = await api.meta()
       set({ meta, status: 'Loading neuron attributes…' })
+      // Regions are small; start them first so the brain's outline appears early.
+      const regions = meta.has_regions ? api.regions() : Promise.resolve(null)
+      regions.then((r) => set({ regions: r })).catch(get().fail)
       const attributes = await api.attributes()
       set({ attributes, status: `Loading ${meta.overview.n_neurons.toLocaleString()} skeletons…` })
       const overview = await api.overview(meta.overview)
@@ -108,6 +131,19 @@ export const useStore = create<State>((set, get) => ({
     }
   },
 
+  setTab: (tab) => set({ tab }),
+  setDetail: (detail) => set({ detail }),
+  setHover: (hover) => set({ hover }),
+
+  selectRegion(region) {
+    if (region) {
+      writeHash(null)
+      set({ region, selection: null, focus: null, tab: 'explore' })
+    } else {
+      set({ region: null })
+    }
+  },
+
   setColorField: (colorField) => set({ colorField, focus: null }),
   setOpacity: (opacity) => set({ opacity }),
   setContextBrightness: (contextBrightness) => set({ contextBrightness }),
@@ -119,6 +155,7 @@ export const useStore = create<State>((set, get) => ({
       set({ selection: null })
       return
     }
+    set({ region: null, tab: 'explore' })
     const attrs = get().attributes
     const index = attrs ? attrs.root_ids.indexOf(rootId) : -1
     if (index < 0) {
