@@ -140,3 +140,44 @@ def test_synapses_binary_layout(client):
     assert n > 0 and len(body) == 4 + n * 16
     partner = np.frombuffer(body[4 + 12 * n :], dtype="<u4")
     assert (partner < 139_255).all()
+
+
+MN9 = 720575940660219265
+
+
+def test_sim_presets(client):
+    presets = {p["id"]: p for p in client.get("/api/sim/presets").json()}
+    assert {"sugar", "bitter", "pheromone", "hearing"} <= set(presets)
+    assert presets["sugar"]["n_neurons"] == 20
+
+
+def test_sim_sugar_drives_mn9(client):
+    body = client.post(
+        "/api/sim/run", json={"target": {"kind": "preset", "id": "sugar"}, "duration_ms": 500}
+    ).json()
+    assert len(body["stimulated"]) == 20
+    assert body["n_bins"] == 100 and len(body["counts"]) == len(body["active"]) * 100
+    mn9 = next(t for t in body["top"] if t["root_id"] == str(MN9))
+    assert mn9["rate_hz"] > 50
+    names = body["regions"]["names"]
+    per_region = np.array(body["regions"]["counts"]).reshape(len(names), -1).sum(axis=1)
+    assert names[int(per_region.argmax())] == "GNG"  # taste and feeding
+    assert body["kenyon_cell_share"] < 0.05
+
+
+def test_sim_other_targets_and_validation(client):
+    one = client.post(
+        "/api/sim/run", json={"target": {"kind": "neurons", "root_ids": [str(MN9)]}}
+    ).json()
+    assert one["stimulated"] == [one["active"][0]]
+    region = client.post(
+        "/api/sim/run",
+        json={"target": {"kind": "region", "region": "ME_R"}, "duration_ms": 50},
+    ).json()
+    assert region["sampled"] and len(region["stimulated"]) == 300
+    bad = client.post("/api/sim/run", json={"target": {"kind": "preset", "id": "nope"}})
+    assert bad.status_code == 400
+    too_fast = client.post(
+        "/api/sim/run", json={"target": {"kind": "preset", "id": "sugar"}, "rate_hz": 5000}
+    )
+    assert too_fast.status_code == 422

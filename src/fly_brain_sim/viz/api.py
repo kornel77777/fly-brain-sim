@@ -20,9 +20,12 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
 from fly_brain_sim.data.paths import DB_PATH, OVERVIEW_DIR, REPO_ROOT, SYNAPSES_DB_PATH
 from fly_brain_sim.data.skeletons import SKELETON_ZIP, SkeletonZip
+from fly_brain_sim.sim.experiment import PRESETS, resolve_target, run_experiment
+from fly_brain_sim.sim.lif import Network
 from fly_brain_sim.viz import overview, regions
 
 WEB_DIST = REPO_ROOT / "web" / "dist"
@@ -69,6 +72,14 @@ REPRESENTATIVES_SQL = """
 NEURON_SUMMARY = "name, cell_type, super_class, side, nt_type"
 
 
+class SimRequest(BaseModel):
+    target: dict  # {"kind": "preset" | "neurons" | "cell_type" | "region", ...}
+    rate_hz: float = Field(150.0, ge=1, le=400)
+    duration_ms: float = Field(300.0, ge=50, le=1000)
+    bin_ms: float = Field(5.0, ge=1, le=50)
+    seed: int = 0
+
+
 class State:
     def __init__(
         self,
@@ -96,6 +107,9 @@ class State:
             meta = json.loads((regions_dir / "meta.json").read_text())
             meta.pop("files", None)
             self.regions_meta = meta
+        self.db_path = db_path
+        self._network: Network | None = None
+        self._network_lock = threading.Lock()
         self.attributes: bytes | None = None  # serialised once; the data never changes
         self._local = threading.local()
 
@@ -104,6 +118,13 @@ class State:
         if not hasattr(self._local, "zip"):
             self._local.zip = SkeletonZip(self.zip_path)
         return self._local.zip
+
+    def network(self) -> Network:
+        """The simulation network, built on first use (~0.2 s)."""
+        with self._network_lock:
+            if self._network is None:
+                self._network = Network.from_db(self.db_path)
+            return self._network
 
     def index_of(self, root_id: int) -> int:
         i = int(np.searchsorted(self.root_ids, root_id))
@@ -403,6 +424,46 @@ def create_app(
         partner = s.indices_of(np.asarray(res["partner"], dtype=np.int64)).astype("<u4")
         body = np.uint32(n).tobytes() + xyz.tobytes() + partner.tobytes()
         return Response(body, media_type="application/octet-stream")
+
+    @app.get("/api/sim/presets")
+    def sim_presets(request: Request):
+        cur = st(request).db.cursor()
+        return [
+            {
+                "id": p.id,
+                "label": p.label,
+                "description": p.description,
+                "n_neurons": len(resolve_target(cur, {"kind": "preset", "id": p.id})[1]),
+            }
+            for p in PRESETS
+        ]
+
+    @app.post("/api/sim/run")
+    def sim_run(req: SimRequest, request: Request):
+        """Stimulate a group of neurons in the whole-brain model (see sim/lif.py).
+
+        Indices in the response are overview indices; `counts` is row-major
+        (active neuron x time bin), and `regions.counts` likewise per home region.
+        """
+        s = st(request)
+        cur = s.db.cursor()
+        try:
+            label, ids = resolve_target(cur, req.target)
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from e
+        if not ids:
+            raise HTTPException(400, "the target has no neurons")
+        result = run_experiment(
+            s.network(),
+            cur,
+            s.root_ids,
+            ids,
+            rate_hz=req.rate_hz,
+            duration_ms=req.duration_ms,
+            bin_ms=req.bin_ms,
+            seed=req.seed,
+        )
+        return {"label": label, **result}
 
     if web_dist.exists():
         app.mount("/", StaticFiles(directory=web_dist, html=True), name="web")
