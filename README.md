@@ -141,6 +141,41 @@ The view is anatomical: in the front (anterior) view dorsal is up and the fly's
 right is on your left. FlyWire coordinates are left-handed (x → fly's right,
 y → ventral, z → posterior), so the viewer mirrors them; see `web/src/scene/frame.ts`.
 
+## Simulation
+
+`fly_brain_sim.sim` re-implements the whole-brain leaky integrate-and-fire model
+of Shiu et al. 2024 ([code](https://github.com/philshiu/Drosophila_brain_model)),
+using numba instead of Brian2 and their v783 connectivity file
+(`shiu_connections`). The equations, parameters and update order are theirs:
+
+- each neuron's voltage leaks toward −52 mV (time constant 20 ms) and it fires
+  when it crosses −45 mV, then is reset and refractory for 2.2 ms;
+- a spike reaches each target 1.8 ms later and adds 0.275 mV × the number of
+  synapses to its input, which decays with a 5 ms time constant. The input is
+  negative if the sender is predicted to release GABA or glutamate;
+- stimulated neurons receive random (Poisson) input, 150 Hz by default, strong
+  enough to make them fire.
+
+It runs one trial at a time (about 1 s of compute per simulated second for a
+typical stimulus); Shiu et al. average 30.
+
+**Validation** (`tests/test_sim.py`): stimulating the 20 sugar-sensing neurons
+from their example (v630 IDs, 20 of the 21 unchanged in v783) makes the
+proboscis motor neuron MN9 fire at about 100 Hz, and about 380 neurons become
+active, matching their "about 400". Small synthetic networks check delays,
+refractoriness, inhibition and silencing.
+
+**Limitation:** the model treats the 293,762 Kenyon cell to Kenyon cell
+connections in the mushroom body as excitatory. Once activity reaches the
+mushroom body, it spreads through them and saturates (in the bitter and
+pheromone presets Kenyon cells fire over a third of all spikes). In the real
+brain, feedback inhibition keeps Kenyon cell activity sparse. Results report
+`kenyon_cell_share` so this can be recognised.
+
+API: `GET /api/sim/presets` and `POST /api/sim/run` with a target (a preset, a
+list of root IDs, a cell type, or a region's neurons, capped at 300), a
+stimulation rate and a duration.
+
 ## Checks and docs
 
 ```bash
