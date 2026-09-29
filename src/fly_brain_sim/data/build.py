@@ -146,6 +146,48 @@ def tables() -> list[Table]:
             "Codex connections without a synapse threshold.",
         ),
         Table(
+            "neuron_neuropils",
+            [codex(CONNECTIONS_NO_THRESHOLD)],
+            """
+            select root_id, neuropil,
+                   sum(input_synapses)::BIGINT as input_synapses,
+                   sum(output_synapses)::BIGINT as output_synapses
+            from (
+                select post_root_id as root_id, neuropil,
+                       syn_count as input_synapses, 0 as output_synapses
+                from connections_no_threshold
+                union all
+                select pre_root_id, neuropil, 0, syn_count from connections_no_threshold
+            )
+            group by all
+            order by root_id, neuropil
+            """,
+            "Synapses per neuron per neuropil (derived from connections_no_threshold).",
+        ),
+        Table(
+            "neuron_home_neuropil",
+            [codex(CONNECTIONS_NO_THRESHOLD)],
+            """
+            select root_id, neuropil as home_neuropil, share as home_share
+            from (
+                select root_id, neuropil,
+                       (input_synapses + output_synapses)
+                           / sum(input_synapses + output_synapses) over (partition by root_id)
+                           as share,
+                       row_number() over (
+                           partition by root_id
+                           order by input_synapses + output_synapses desc, neuropil
+                       ) as rank
+                from neuron_neuropils
+                where neuropil <> 'UNASGD'
+            )
+            where rank = 1
+            order by root_id
+            """,
+            "The neuropil holding most of each neuron's synapses (inputs + outputs), and its "
+            "share of them. Neurons without synapses in any neuropil are absent.",
+        ),
+        Table(
             "shiu_neurons",
             [COMPLETENESS_CSV],
             "select * from shiu_completeness order by shiu_index",
