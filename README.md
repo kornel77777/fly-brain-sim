@@ -1,9 +1,16 @@
 # fly-brain-sim
 
 Visualize and simulate the whole-brain connectome of adult *Drosophila melanogaster*
-using the FlyWire FAFB v783 release. So far this repository has the data
+using the FlyWire FAFB v783 release. 
+
+Basically: ~140,000 neurons and tens of millions of synapses, mapped in full, and
+you get to fly around inside them in your browser.
+
+So far this repository has the data
 foundation (download scripts, a reproducible DuckDB build, validation tests) and
-a 3D web viewer.
+a 3D web viewer. 
+
+Shout out to the FlyWire Consortium!!! (the Seung and Murthy labs at Princeton, the Jefferis lab at Cambridge, and the citizen scientists)
 
 ## Setup
 
