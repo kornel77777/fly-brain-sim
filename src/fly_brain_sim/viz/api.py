@@ -23,13 +23,14 @@ from fastapi.staticfiles import StaticFiles
 
 from fly_brain_sim.data.paths import DB_PATH, OVERVIEW_DIR, REPO_ROOT, SYNAPSES_DB_PATH
 from fly_brain_sim.data.skeletons import SKELETON_ZIP, SkeletonZip
-from fly_brain_sim.viz import overview
+from fly_brain_sim.viz import overview, regions
 
 WEB_DIST = REPO_ROOT / "web" / "dist"
 
 # Per-neuron categorical fields the client can colour by.
 COLOR_FIELDS = [
     "super_class",
+    "home_neuropil",
     "flow",
     "class",
     "sub_class",
@@ -40,11 +41,43 @@ COLOR_FIELDS = [
     "cell_type",
 ]
 OVERVIEW_FILES = ["offsets.u32", "positions.u16", "parent_delta.u32"]
+REGION_FILES = ["vertices.f32", "indices.u32"]
+
+# One neuron per (cell type, side): the one whose synapse count is closest to the
+# group's median. Used for the uncluttered "sketch" view.
+REPRESENTATIVES_SQL = """
+    with total as (
+        select root_id, sum(input_synapses + output_synapses) as syn
+        from neuron_neuropils group by 1
+    ),
+    typed as (
+        select n.root_id, n.cell_type, n.side, coalesce(t.syn, 0) as syn
+        from neurons n left join total t using (root_id)
+        where n.cell_type is not null
+    ),
+    with_median as (
+        select *, median(syn) over (partition by cell_type, side) as median_syn from typed
+    ),
+    ranked as (
+        select root_id, row_number() over (
+            partition by cell_type, side order by abs(syn - median_syn), root_id
+        ) as rank
+        from with_median
+    )
+    select root_id from ranked where rank = 1 order by root_id
+"""
 NEURON_SUMMARY = "name, cell_type, super_class, side, nt_type"
 
 
 class State:
-    def __init__(self, db_path: Path, synapses_path: Path, overview_dir: Path, zip_path: Path):
+    def __init__(
+        self,
+        db_path: Path,
+        synapses_path: Path,
+        overview_dir: Path,
+        zip_path: Path,
+        regions_dir: Path,
+    ):
         self.db = duckdb.connect(db_path, read_only=True)
         self.db.execute("set enable_progress_bar = false")
         self.synapses = None
@@ -57,6 +90,12 @@ class State:
         if not np.array_equal(self.root_ids, overview.neuron_order(db_path)):
             raise RuntimeError("overview is out of date with the database; rebuild it")
         self.zip_path = zip_path
+        self.regions_dir = regions_dir
+        self.regions_meta = None
+        if (regions_dir / "meta.json").exists():
+            meta = json.loads((regions_dir / "meta.json").read_text())
+            meta.pop("files", None)
+            self.regions_meta = meta
         self.attributes: bytes | None = None  # serialised once; the data never changes
         self._local = threading.local()
 
@@ -81,11 +120,12 @@ def create_app(
     synapses_path: Path = SYNAPSES_DB_PATH,
     overview_dir: Path = OVERVIEW_DIR,
     zip_path: Path = SKELETON_ZIP,
+    regions_dir: Path = regions.REGIONS_DIR,
     web_dist: Path = WEB_DIST,
 ) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        app.state.s = State(db_path, synapses_path, overview_dir, zip_path)
+        app.state.s = State(db_path, synapses_path, overview_dir, zip_path, regions_dir)
         yield
 
     app = FastAPI(title="fly-brain-sim viewer", lifespan=lifespan)
@@ -109,7 +149,27 @@ def create_app(
             "overview": s.overview_meta,
             "color_fields": COLOR_FIELDS,
             "has_synapses": s.synapses is not None,
+            "has_regions": s.regions_meta is not None,
         }
+
+    @app.get("/api/regions")
+    def regions_meta(request: Request):
+        """Region list with mesh ranges and statistics (see viz/regions.py)."""
+        s = st(request)
+        if s.regions_meta is None:
+            raise HTTPException(503, "regions not built (scripts/build_regions.py)")
+        return s.regions_meta
+
+    @app.get("/api/regions/{name}")
+    def regions_file(name: str, request: Request):
+        s = st(request)
+        if name not in REGION_FILES or s.regions_meta is None:
+            raise HTTPException(404)
+        return FileResponse(
+            s.regions_dir / f"{name}.gz",
+            media_type="application/octet-stream",
+            headers={"Content-Encoding": "gzip", "Cache-Control": "no-cache"},
+        )
 
     @app.get("/api/overview/{name}")
     def overview_file(name: str, request: Request):
@@ -126,6 +186,7 @@ def create_app(
         """Root IDs (strings) and dictionary-encoded colour fields, in overview order.
 
         Categories are sorted by frequency; codes index into them, -1 = missing.
+        `representatives` lists the overview indices of one neuron per cell type and side.
         """
         s = st(request)
         if s.attributes is None:
@@ -133,7 +194,8 @@ def create_app(
             df = pl.from_arrow(
                 s.db.cursor()
                 .execute(
-                    f"select root_id::varchar as root_id, {cols} from neurons order by root_id"
+                    f"select root_id::varchar as root_id, {cols} from neurons "
+                    "left join neuron_home_neuropil using (root_id) order by root_id"
                 )
                 .arrow()
             )
@@ -152,7 +214,12 @@ def create_app(
                     "counts": vc["count"].to_list(),
                     "codes": codes["code"].fill_null(-1).to_list(),
                 }
-            body = {"root_ids": df["root_id"].to_list(), "fields": fields}
+            reps = s.db.cursor().execute(REPRESENTATIVES_SQL).fetchnumpy()["root_id"]
+            body = {
+                "root_ids": df["root_id"].to_list(),
+                "fields": fields,
+                "representatives": s.indices_of(np.asarray(reps, dtype=np.int64)).tolist(),
+            }
             s.attributes = json.dumps(body, separators=(",", ":")).encode()
         return Response(s.attributes, media_type="application/json")
 
@@ -210,7 +277,12 @@ def create_app(
         s = st(request)
         index = s.index_of(root_id)
         cur = s.db.cursor()
-        info = rows(cur, "select * from neurons where root_id = ?", [root_id])[0]
+        info = rows(
+            cur,
+            "select * from neurons left join neuron_home_neuropil using (root_id) "
+            "where root_id = ?",
+            [root_id],
+        )[0]
         ann = rows(cur, "select * from annotations where root_id = ?", [root_id])
         shiu = cur.execute(
             "select shiu_index from shiu_neurons where root_id = ?", [root_id]

@@ -47,6 +47,38 @@ def test_attributes_keep_root_ids_exact(client, db):
     assert sum(nt["counts"]) == sum(c >= 0 for c in nt["codes"])
 
 
+def test_representatives_are_one_per_cell_type_and_side(client, db):
+    body = client.get("/api/neurons/attributes").json()
+    reps = body["representatives"]
+    groups = scalar(
+        db,
+        "select count(*) from "
+        "(select distinct cell_type, side from neurons where cell_type is not null)",
+    )
+    assert len(reps) == len(set(reps)) == groups
+    cell_type = body["fields"]["cell_type"]
+    side = body["fields"]["side"]
+    pairs = {(cell_type["codes"][i], side["codes"][i]) for i in reps}
+    assert len(pairs) == groups and all(ct >= 0 for ct, _ in pairs)
+
+
+def test_home_neuropil_colour_field(client, db):
+    field = client.get("/api/neurons/attributes").json()["fields"]["home_neuropil"]
+    assert field["categories"][0] in ("ME_L", "ME_R")  # the medulla holds the most neurons
+    assert sum(field["counts"]) == scalar(db, "select count(*) from neuron_home_neuropil")
+
+
+def test_regions_endpoints(client):
+    meta = client.get("/api/meta").json()
+    if not meta["has_regions"]:
+        pytest.skip("regions not built")
+    regions = client.get("/api/regions").json()
+    assert len(regions["regions"]) == 78
+    verts = np.frombuffer(client.get("/api/regions/vertices.f32").content, dtype="<f4")
+    assert len(verts) == regions["n_vertices"] * 3
+    assert client.get("/api/regions/meta.json").status_code == 404
+
+
 def test_search_finds_cell_types_ids_and_labels(client):
     kc = client.get("/api/search", params={"q": "KCg-m"}).json()
     assert kc["results"][0]["cell_type"] == "KCg-m"
@@ -61,6 +93,7 @@ def test_neuron_info(client, db):
     info = client.get(f"/api/neurons/{T5C}").json()
     assert info["root_id"] == str(T5C) and info["index"] == 0
     assert info["neuron"]["cell_type"] == "T5c"
+    assert info["neuron"]["home_neuropil"] in ("LO_R", "LOP_R")
     assert info["annotations"]["root_id"] == str(T5C)
     out = scalar(
         db, f"select sum(syn_count) from connections_no_threshold where pre_root_id = {T5C}"
