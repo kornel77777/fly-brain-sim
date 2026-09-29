@@ -26,9 +26,9 @@ npm --prefix web install
 
 Nothing under `data/` is tracked by git. There are two kinds of input.
 
-### 1. Files from FlyWire Codex (manual download)
+### 1. Files from FlyWire Codex (download manually)
 
-Codex downloads need a FlyWire account, so they can't be scripted.
+Codex downloads require a FlyWire account.
 
 1. Sign in at <https://codex.flywire.ai> and open the download page
    (<https://codex.flywire.ai/api/download>).
@@ -47,12 +47,13 @@ Codex downloads need a FlyWire account, so they can't be scripted.
 uv run python scripts/import_codex.py ~/Downloads/flywire
 ```
 
-The browser's file names don't matter. Each file is recognised by its CSV
+The browser's file names don't matter. Each file is identified by its CSV
 header (the skeleton zip by its `<root_id>.swc` entries), and the two connection
-tables are told apart by their contents. Files are copied into `data/raw/codex/`
+tables are told apart by their contents. 
+Files are copied into `data/raw/codex/`
 under canonical names such as `neurons.csv.gz`. Files over 1 GB (skeletons,
 synapse table) are symlinked instead, so keep the originals where they are. The
-skeletons are read straight from the zip; there is no need to unpack 33 GB.
+skeletons are read straight from the zip; there is no need to unpack 33 GB!
 
 ### 2. Files from GitHub (scripted)
 
@@ -67,7 +68,7 @@ This downloads into `data/raw/external/`, pinned to fixed commits:
 | `Connectivity_783.parquet`, `Completeness_783.csv` | [philshiu/Drosophila_brain_model](https://github.com/philshiu/Drosophila_brain_model) |
 | `Supplemental_file1_neuron_annotations.tsv` | [flyconnectome/flywire_annotations](https://github.com/flyconnectome/flywire_annotations) |
 
-Existing files are skipped, so the script is safe to re-run. The annotation file
+Existing files are skipped, so feel free to re-run. The annotation file
 is pinned to the last revision whose root IDs are exactly those of v783. Later
 revisions (v3.0, October 2025 onward) swap in a few non-783 IDs.
 
@@ -77,7 +78,7 @@ revisions (v3.0, October 2025 onward) swap in a few non-783 IDs.
 uv run python scripts/build_db.py
 ```
 
-This builds `data/processed/flywire_783.duckdb` from scratch (about 30 s) and
+This builds `data/processed/flywire_783.duckdb` from scratch and
 replaces any existing copy. Root IDs are 18-digit integers and are always read
 as `BIGINT`, never as floats, which would silently change them.
 
@@ -127,20 +128,21 @@ Then open <http://127.0.0.1:8000>. For frontend development, run the API with
 `scripts/serve.py` and, in another terminal, `npm --prefix web run dev`, then open
 <http://localhost:5173>; the dev server proxies `/api` to the API.
 
-- **Levels of detail:** *Regions* shows only the brain regions; *Sketch* (the
+- **Levels of detail:** "Regions" shows only the brain regions; Sketch (the
   default) adds one example neuron per cell type and side, about 17,000 neurons;
   *All neurons* shows all 139,255.
 - **Brain regions:** hover to name a region, click to read what it does and see
-  its main cell types and where its signals come from and go to. The *Brain
-  regions* tab lists them all, grouped by system.
-- **Colours:** by super class, brain region, neurotransmitter, side, hemilineage,
+  its main cell types and where its signals come from and go to. The "Brain
+  regions" tab lists them all, grouped by system.
+- **Colors:** by super class, brain region, neurotransmitter, side, hemilineage,
   cell type and more, with a short explanation of each. Click a legend entry to
   highlight that group.
 - **Search and inspect:** find neurons by cell type, name, community label (for
   example "MN9") or root ID, or click one in the view. The selected neuron is shown
   at full resolution with its details. The URL (`#neuron=<root_id>`) links to it.
 - **Connectivity:** upstream partners in cyan and downstream in orange, brighter
-  for stronger connections, with a minimum synapse count. Other neurons are dimmed
+  for stronger connections (you might want to raise the opacity to make it more
+  noticeable), with a minimum synapse count. Other neurons are dimmed
   to a faint silhouette.
 - **Synapses:** input and output synapse locations of the selected neuron.
 - **Stimulate:** switch on a group of neurons and watch activity spread, slowed
