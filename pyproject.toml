@@ -14,6 +14,8 @@ dependencies = [
     "numpy>=2.5.3",
     "polars>=1.44.2",
     "pyarrow>=25.0.1",
+    "scikit-image>=0.26.0",
+    "scipy>=1.18.1",
     "uvicorn[standard]>=0.54.0",
 ]
 
