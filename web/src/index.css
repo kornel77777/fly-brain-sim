@@ -450,3 +450,107 @@ details.group p {
     border-top: 1px solid var(--line);
   }
 }
+
+.cards {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0 10px;
+}
+
+.card {
+  text-align: left;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.card .block {
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.card:hover,
+.chip:hover {
+  border-color: var(--accent);
+}
+
+.card.active,
+.chip.active {
+  border-color: var(--accent);
+  background: #13233a;
+}
+
+button.primary {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: #04121f;
+  font-weight: 600;
+}
+
+button.primary:disabled {
+  background: var(--panel-2);
+  color: var(--muted);
+  cursor: default;
+}
+
+.player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+
+.player input {
+  flex: 1;
+}
+
+.play {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  flex: none;
+}
+
+.note {
+  font-size: 12px;
+  background: #2a2111;
+  border: 1px solid #5a4520;
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: #f0d9a8;
+}
+
+.bullets {
+  margin: 6px 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.bullets li {
+  margin-bottom: 4px;
+}
+
+.watch li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+.watch .dot {
+  margin-top: 4px;
+}
+
+.dot.on {
+  background: #ffb347;
+  box-shadow: 0 0 6px #ff7a1a;
+}

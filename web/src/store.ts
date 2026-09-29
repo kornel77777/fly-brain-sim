@@ -8,6 +8,9 @@ import {
   type Overview,
   type Partner,
   type Regions,
+  type SimPreset,
+  type SimResult,
+  type SimTarget,
 } from './api'
 import type { SkeletonData, SynapseData } from './decode'
 
@@ -48,6 +51,18 @@ interface State {
   contextBrightness: number // 0..1 brightness of neurons outside a highlight; 0 hides them
   focus: Focus | null
 
+  sim: {
+    presets: SimPreset[] | null
+    target: SimTarget | null
+    targetLabel: string | null
+    rateHz: number
+    durationMs: number
+    running: boolean
+    result: SimResult | null
+    bin: number // current playback position, in time bins (fractional)
+    playing: boolean
+  }
+
   selection: Selection | null
   minSyn: number
   showPartners: Record<Direction, boolean>
@@ -67,6 +82,11 @@ interface State {
   togglePartners: (d: Direction) => void
   toggleSynapses: (d: SynapseDirection) => void
   fail: (e: unknown) => void
+
+  loadSimPresets: () => Promise<void>
+  setSimTarget: (target: SimTarget, label: string) => void
+  setSim: (patch: Partial<Pick<State['sim'], 'rateHz' | 'durationMs' | 'bin' | 'playing'>>) => void
+  runSim: () => Promise<void>
 }
 
 const HASH_KEY = 'neuron'
@@ -98,6 +118,18 @@ export const useStore = create<State>((set, get) => ({
   opacity: 0.3,
   contextBrightness: 0.18,
   focus: null,
+
+  sim: {
+    presets: null,
+    target: null,
+    targetLabel: null,
+    rateHz: 150,
+    durationMs: 300,
+    running: false,
+    result: null,
+    bin: 0,
+    playing: false,
+  },
 
   selection: null,
   minSyn: 5,
@@ -212,6 +244,38 @@ export const useStore = create<State>((set, get) => ({
     set((s) => ({ showSynapses: { ...s.showSynapses, [d]: on } }))
     const sel = get().selection
     if (on && sel && !sel.synapses[d]) loadSynapses(sel.rootId, d).catch(get().fail)
+  },
+
+  async loadSimPresets() {
+    if (get().sim.presets) return
+    try {
+      const presets = await api.simPresets()
+      set((s) => ({ sim: { ...s.sim, presets } }))
+    } catch (e) {
+      get().fail(e)
+    }
+  },
+
+  setSimTarget: (target, targetLabel) =>
+    set((s) => ({ sim: { ...s.sim, target, targetLabel }, tab: 'stimulate' })),
+
+  setSim: (patch) => set((s) => ({ sim: { ...s.sim, ...patch } })),
+
+  async runSim() {
+    const { sim } = get()
+    if (!sim.target || sim.running) return
+    set({ sim: { ...sim, running: true, playing: false }, error: null })
+    try {
+      const result = await api.simulate({
+        target: sim.target,
+        rate_hz: sim.rateHz,
+        duration_ms: sim.durationMs,
+      })
+      set((s) => ({ sim: { ...s.sim, running: false, result, bin: 0, playing: true } }))
+    } catch (e) {
+      set((s) => ({ sim: { ...s.sim, running: false } }))
+      get().fail(e)
+    }
   },
 
   fail(e) {

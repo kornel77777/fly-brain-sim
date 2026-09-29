@@ -9,6 +9,8 @@ import { NeuronPanel } from './ui/NeuronPanel'
 import { RegionList } from './ui/RegionList'
 import { RegionPanel } from './ui/RegionPanel'
 import { Search } from './ui/Search'
+import { SimPanel } from './ui/SimPanel'
+import { SimPlayer } from './ui/SimPlayer'
 
 const VIEWS: [ViewName, string][] = [
   ['front', 'Front'],
@@ -26,6 +28,7 @@ const DETAILS: [Detail, string][] = [
 const TABS: [Tab, string][] = [
   ['explore', 'Explore'],
   ['regions', 'Brain regions'],
+  ['stimulate', 'Stimulate'],
 ]
 
 export default function App() {
@@ -58,6 +61,7 @@ export default function App() {
 
   return (
     <div className="app">
+      <SimPlayer />
       <aside className="sidebar">
         <header>
           <h1>Fly Brain Viewer</h1>
@@ -78,6 +82,7 @@ export default function App() {
         </nav>
         {tab === 'explore' && <ExploreTab />}
         {tab === 'regions' && <RegionList />}
+        {tab === 'stimulate' && <SimPanel />}
         <footer className="small muted">
           Data: <a href="https://codex.flywire.ai" target="_blank" rel="noreferrer">FlyWire</a>{' '}
           (CC BY-NC 4.0). Dorkenwald et al. 2024; Schlegel et al. 2024.

@@ -95,6 +95,58 @@ export interface NeuronInfo {
   output_synapses: number
 }
 
+export interface SimPreset {
+  id: string
+  label: string
+  description: string
+  n_neurons: number
+}
+
+export type SimTarget =
+  | { kind: 'preset'; id: string }
+  | { kind: 'neurons'; root_ids: string[] }
+  | { kind: 'cell_type'; cell_type: string; side?: string }
+  | { kind: 'region'; region: string }
+
+export interface SimTopNeuron {
+  root_id: string
+  index: number
+  cell_type: string | null
+  super_class: string | null
+  side: string | null
+  nt_type: string | null
+  rate_hz: number
+  first_spike_ms: number
+}
+
+export interface SimWatch {
+  label: string
+  n: number
+  n_active: number
+  rate_hz: number // mean over the group
+  first_spike_ms: number | null
+  indices: number[]
+}
+
+export interface SimResult {
+  label: string
+  watch: SimWatch[] // key neurons of a preset
+  n_requested: number
+  n_not_in_model: number
+  sampled: boolean
+  stimulated: number[] // overview indices
+  rate_hz: number
+  duration_ms: number
+  bin_ms: number
+  n_bins: number
+  n_spikes: number
+  kenyon_cell_share: number
+  active: number[] // overview indices
+  counts: number[] // active x n_bins, row-major
+  top: SimTopNeuron[]
+  regions: { names: string[]; counts: number[] } // region x n_bins
+}
+
 export interface Overview {
   meta: OverviewMeta
   positions: Uint16Array
@@ -156,6 +208,23 @@ export const api = {
     json<{ partners: Partner[] }>(
       `/api/neurons/${rootId}/partners?direction=${direction}&min_syn=${minSyn}`,
     ).then((r) => r.partners),
+
+  simPresets: () => json<SimPreset[]>('/api/sim/presets'),
+
+  async simulate(body: {
+    target: SimTarget
+    rate_hz: number
+    duration_ms: number
+    bin_ms?: number
+  }): Promise<SimResult> {
+    const r = await fetch('/api/sim/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!r.ok) throw new Error(`simulation failed: ${r.status} ${await r.text()}`)
+    return r.json() as Promise<SimResult>
+  },
 
   skeleton: async (rootId: string): Promise<SkeletonData> =>
     parseSkeleton(await binary(`/api/neurons/${rootId}/skeleton`)),

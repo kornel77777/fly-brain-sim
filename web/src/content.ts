@@ -268,3 +268,32 @@ export const FIELD_HELP: Record<string, { about: string; values?: Record<string,
   },
   side: { about: 'Brain hemisphere of the cell body (or nerve entry for sensory neurons).' },
 }
+
+export const SIM_HELP = {
+  intro:
+    'Switch on a group of neurons and watch the signal travel through the wiring. The ' +
+    'model uses the real connections of this brain and nothing else.',
+  how: [
+    'Each neuron is a simple unit: incoming signals charge it up, the charge slowly leaks ' +
+      'away, and when it passes a threshold the neuron fires a spike.',
+    'A spike excites the neurons it connects to if it releases acetylcholine, and inhibits ' +
+      'them if it releases GABA or glutamate. Connections with more synapses are stronger.',
+    'Stimulating means driving the chosen neurons with random spikes, much like switching ' +
+      'them on with light (optogenetics) in a real experiment.',
+  ],
+  reading:
+    'Neurons glow while they fire (brighter means faster) and leave a faint trail once ' +
+    'they stop. Brain regions glow with the activity inside them. Playback is slowed down.',
+  model:
+    'Model: Shiu et al. 2024, Nature. It is deliberately simple: no neuromodulators, no ' +
+    'learning, no body. One run with random input, so numbers vary a little between runs.',
+  kenyon: (share: number) =>
+    `Activity reached the mushroom body and spread through its Kenyon cells, which excite ` +
+    `each other in this model (they fired ${Math.round(share * 100)}% of all spikes). In a ` +
+    `real brain, feedback inhibition keeps Kenyon cell activity sparse, so treat this ` +
+    `widespread wave as a limitation of the model rather than a prediction.`,
+  sampled:
+    'This group is larger than the model stimulates at once, so 300 of its neurons were ' +
+    'picked at random.',
+  rate: 'How often the stimulated neurons are made to fire, in spikes per second (Hz).',
+}

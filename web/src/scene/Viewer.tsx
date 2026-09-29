@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import { Raycaster, Vector2, Vector3, type PerspectiveCamera } from 'three'
 import { DOWNSTREAM, UPSTREAM, rgbCss } from '../colors'
+import { regionLevels } from '../sim'
 import { useStore } from '../store'
 import { brainFrame } from './frame'
 import { Overview } from './Overview'
@@ -173,21 +174,29 @@ function useRegionEmphasis(): Float32Array | null {
   const region = useStore((s) => s.region)
   const hover = useStore((s) => s.hover?.region ?? null)
   const neuronSelected = useStore((s) => s.selection !== null)
+  const simResult = useStore((s) => (s.tab === 'stimulate' ? s.sim.result : null))
+  const simBin = useStore((s) => Math.floor(s.sim.bin))
   return useMemo(() => {
     if (!regions) return null
+    if (simResult) {
+      // Regions glow with the activity inside them.
+      const levels = regionLevels(simResult, Math.min(simBin, simResult.n_bins - 1))
+      return Float32Array.from(regions.regions, (r) => 0.3 + 3.4 * (levels.get(r.name) ?? 0))
+    }
     return Float32Array.from(regions.regions, (r) => {
       if (r.name === region) return 3
       if (r.name === hover) return 2
       if (region) return 0.45
       return neuronSelected ? 0.6 : 1
     })
-  }, [regions, region, hover, neuronSelected])
+  }, [regions, region, hover, neuronSelected, simResult, simBin])
 }
 
 function Scene() {
   const overview = useStore((s) => s.overview)
   const selection = useStore((s) => s.selection)
   const showSynapses = useStore((s) => s.showSynapses)
+  const simView = useStore((s) => s.tab === 'stimulate' && s.sim.result !== null)
   const colors = useColorTable()
   const contextBrightness = useStore((s) => s.contextBrightness)
   const regions = useStore((s) => s.regions)
@@ -217,11 +226,11 @@ function Scene() {
             contextBrightness={contextBrightness}
           />
         )}
-        {selection?.skeleton && <SelectedNeuron skeleton={selection.skeleton} />}
-        {showSynapses.outgoing && selection?.synapses.outgoing && (
+        {!simView && selection?.skeleton && <SelectedNeuron skeleton={selection.skeleton} />}
+        {!simView && showSynapses.outgoing && selection?.synapses.outgoing && (
           <Synapses data={selection.synapses.outgoing} color={rgbCss(DOWNSTREAM)} />
         )}
-        {showSynapses.incoming && selection?.synapses.incoming && (
+        {!simView && showSynapses.incoming && selection?.synapses.incoming && (
           <Synapses data={selection.synapses.incoming} color={rgbCss(UPSTREAM)} />
         )}
       </group>

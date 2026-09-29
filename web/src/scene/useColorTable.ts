@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { buildColorTable, categoryColors, partnerHighlight, type RGBA } from '../colors'
+import { neuronColors } from '../sim'
 import { useStore, type Detail } from '../store'
 
 const FOCUS_ALPHA = 230
@@ -27,6 +28,8 @@ export function useColorTable(): { table: Uint8Array; highlighting: boolean } | 
   const showPartners = useStore((s) => s.showPartners)
   const detail = useStore((s) => s.detail)
   const region = useStore((s) => s.region)
+  const simResult = useStore((s) => (s.tab === 'stimulate' ? s.sim.result : null))
+  const simBin = useStore((s) => Math.floor(s.sim.bin))
 
   const upstream = selection?.partners.upstream
   const downstream = selection?.partners.downstream
@@ -72,7 +75,10 @@ export function useColorTable(): { table: Uint8Array; highlighting: boolean } | 
       codes.flatMap((c, i) => (c === code ? [i] : []))
 
     let highlight: Map<number, RGBA> | null = null
-    if (selectedIndex !== undefined) {
+    if (simResult) {
+      // Simulation playback: neurons light up as they fire.
+      highlight = neuronColors(simResult, Math.min(simBin, simResult.n_bins - 1))
+    } else if (selectedIndex !== undefined) {
       // Partners are specific enough to show at any detail level. The selected
       // neuron itself is drawn separately at full resolution.
       highlight = partnerHighlight(
@@ -109,5 +115,7 @@ export function useColorTable(): { table: Uint8Array; highlighting: boolean } | 
     upstream,
     downstream,
     showPartners,
+    simResult,
+    simBin,
   ])
 }
