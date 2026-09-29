@@ -32,8 +32,8 @@ Codex downloads need a FlyWire account, so they can't be scripted.
    - Coordinates, Labels, Processed Labels, Visual Neuron Types,
      Column Assignment, Connectivity Tags
    - For the viewer: the skeletons, **LOD1 Healed** (~14 GB zip), and the
-     Princeton synapse table (~2.7 GB). The synapse table is optional; without it
-     the viewer just can't show synapse locations.
+     Princeton synapse table (~2.7 GB). The synapse table is needed for the brain
+     region shapes and synapse locations; without it the viewer shows neurons only.
 3. Put them all in one folder, e.g. `~/Downloads/flywire`, and run:
 
 ```bash
@@ -87,10 +87,11 @@ as `BIGINT`, never as floats, which would silently change them.
 Column names are normalised across sources: `root_id`, `pre_root_id`,
 `post_root_id`, `syn_count`, `cell_type`, and `x_nm`/`y_nm`/`z_nm` for positions.
 
-For the viewer, two more build steps:
+For the viewer, three more build steps:
 
 ```bash
-uv run python scripts/build_synapses.py   # optional, ~20 s, 2.1 GB
+uv run python scripts/build_synapses.py   # ~20 s, 2.1 GB
+uv run python scripts/build_regions.py    # ~2 s, needs the synapse database
 uv run python scripts/build_overview.py   # ~40 s, needs the skeleton zip
 ```
 
@@ -99,6 +100,14 @@ uv run python scripts/build_overview.py   # ~40 s, needs the skeleton zip
 skeletons (727M nodes) into one whole-brain buffer of about 4.8M vertices
 (30 MB gzipped) in `data/processed/overview/`. It prunes side branches shorter
 than 20 µm, then keeps branch points, tips and a node every 20 µm of cable.
+
+`build_regions.py` turns the 78 neuropils (brain regions) into smooth outline
+meshes. FlyWire labels every synapse with its neuropil, so each region's shape
+comes from where its synapses are: they are binned into 4 µm voxels, cleaned up,
+and turned into a surface with marching cubes. It also works out each region's
+main cell types and the regions it exchanges the most signal with. A neuron's
+*home region* is the neuropil holding most of its synapses (tables
+`neuron_neuropils` and `neuron_home_neuropil` in the main database).
 
 ## Viewer
 
@@ -111,9 +120,15 @@ Then open <http://127.0.0.1:8000>. For frontend development, run the API with
 `scripts/serve.py` and, in another terminal, `npm --prefix web run dev`, then open
 <http://localhost:5173>; the dev server proxies `/api` to the API.
 
-- **Whole brain:** every neuron as a simplified skeleton, coloured by super
-  class, neurotransmitter, side, hemilineage, cell type and more. Click a legend
-  entry to highlight that group.
+- **Levels of detail:** *Regions* shows only the brain regions; *Sketch* (the
+  default) adds one example neuron per cell type and side, about 17,000 neurons;
+  *All neurons* shows all 139,255.
+- **Brain regions:** hover to name a region, click to read what it does and see
+  its main cell types and where its signals come from and go to. The *Brain
+  regions* tab lists them all, grouped by system.
+- **Colours:** by super class, brain region, neurotransmitter, side, hemilineage,
+  cell type and more, with a short explanation of each. Click a legend entry to
+  highlight that group.
 - **Search and inspect:** find neurons by cell type, name, community label (for
   example "MN9") or root ID, or click one in the view. The selected neuron is shown
   at full resolution with its details. The URL (`#neuron=<root_id>`) links to it.
